@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FamilyMember } from "./api";
 import FamilyTab from "./FamilyTab";
+import FamilyNameForm from "./FamilyNameForm";
 import CalendarSettings from "./CalendarSettings";
 import WeatherSettings from "./WeatherSettings";
 import Icon from "./Icon";
@@ -18,6 +19,7 @@ const SECTIONS: { id: Section; label: string; icon: string }[] = [
 type Props = {
   members: FamilyMember[];
   onMembersChanged: () => void;
+  onFamilyNameChanged: () => void;
   sleepSchedule: SleepSchedule;
   onSleepScheduleChange: (next: SleepSchedule) => void;
 };
@@ -25,6 +27,7 @@ type Props = {
 export default function SettingsTab({
   members,
   onMembersChanged,
+  onFamilyNameChanged,
   sleepSchedule,
   onSleepScheduleChange,
 }: Props) {
@@ -59,10 +62,16 @@ export default function SettingsTab({
 
       <main className="min-w-0">
         {section === "family" && (
-          <section>
-            <h2 className="font-display text-3xl font-medium mb-1">Family</h2>
-            <p className="text-muted mb-5">Add or remove people. Tap an avatar to edit color and name.</p>
-            <FamilyTab members={members} onChanged={onMembersChanged} />
+          <section className="space-y-8">
+            <div>
+              <h2 className="font-display text-3xl font-medium mb-1">Family</h2>
+              <p className="text-muted mb-5">Set the household name and add or edit family members.</p>
+              <FamilyNameForm onChanged={onFamilyNameChanged} />
+            </div>
+            <div>
+              <h3 className="font-display text-2xl font-medium mb-4">Members</h3>
+              <FamilyTab members={members} onChanged={onMembersChanged} />
+            </div>
           </section>
         )}
 

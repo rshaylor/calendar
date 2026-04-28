@@ -30,6 +30,7 @@ def ensure_schema() -> None:
         ("calendar_subscriptions", "member_id", "INTEGER"),
         ("chores", "weekdays", "TEXT"),
         ("chores", "time_of_day", "VARCHAR"),
+        ("family_members", "birth_date", "DATE"),
     ]
     for table, col, coltype in additions:
         if table not in inspector.get_table_names():

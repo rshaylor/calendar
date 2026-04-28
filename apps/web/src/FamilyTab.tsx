@@ -8,8 +8,23 @@ type Props = {
   onChanged: () => void;
 };
 
+type FormState =
+  | { kind: "closed" }
+  | { kind: "creating" }
+  | { kind: "editing"; member: FamilyMember };
+
+export function ageFromBirthDate(iso: string): number {
+  const [y, m, d] = iso.split("-").map((s) => parseInt(s, 10));
+  if (!y || !m || !d) return 0;
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  const monthDiff = now.getMonth() + 1 - m;
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d)) age--;
+  return age;
+}
+
 export default function FamilyTab({ members, onChanged }: Props) {
-  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<FormState>({ kind: "closed" });
 
   async function remove(id: number) {
     if (!confirm("Remove this family member?")) return;
@@ -35,17 +50,33 @@ export default function FamilyTab({ members, onChanged }: Props) {
               {m.avatar_emoji}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-display text-xl font-medium leading-tight">{m.name}</div>
-              <div
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-1"
-                style={{
-                  background: m.is_kid ? tint(m.color, 0.28) : "var(--color-bg-2)",
-                  color: "var(--color-ink-2)",
-                }}
-              >
-                {m.is_kid ? "Kid" : "Grown-up"}
+              <div className="font-display text-xl font-medium leading-tight truncate">
+                {m.name}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <div
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                  style={{
+                    background: m.is_kid ? tint(m.color, 0.28) : "var(--color-bg-2)",
+                    color: "var(--color-ink-2)",
+                  }}
+                >
+                  {m.is_kid ? "Kid" : "Grown-up"}
+                </div>
+                {m.birth_date && (
+                  <div className="text-xs text-ink-2">
+                    {ageFromBirthDate(m.birth_date)} yrs
+                  </div>
+                )}
               </div>
             </div>
+            <button
+              onClick={() => setForm({ kind: "editing", member: m })}
+              className="w-9 h-9 rounded-full bg-bg-2 hover:bg-line flex items-center justify-center text-ink-2"
+              aria-label="Edit member"
+            >
+              <Icon name="edit" size={16} />
+            </button>
             <button
               onClick={() => remove(m.id)}
               className="w-9 h-9 rounded-full bg-bg-2 hover:bg-line flex items-center justify-center text-ink-2 hover:text-danger"
@@ -56,9 +87,9 @@ export default function FamilyTab({ members, onChanged }: Props) {
           </div>
         ))}
 
-        {!showForm && (
+        {form.kind === "closed" && (
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => setForm({ kind: "creating" })}
             className="rounded-[20px] border-2 border-dashed border-line p-4 flex items-center gap-3.5 text-muted hover:bg-bg-2 transition"
           >
             <div className="w-14 h-14 rounded-full bg-bg-2 flex items-center justify-center shrink-0">
@@ -69,12 +100,13 @@ export default function FamilyTab({ members, onChanged }: Props) {
         )}
       </div>
 
-      {showForm && (
+      {form.kind !== "closed" && (
         <div className="mt-4">
           <MemberForm
-            onCancel={() => setShowForm(false)}
+            initial={form.kind === "editing" ? form.member : undefined}
+            onCancel={() => setForm({ kind: "closed" })}
             onSaved={() => {
-              setShowForm(false);
+              setForm({ kind: "closed" });
               onChanged();
             }}
           />
@@ -84,16 +116,36 @@ export default function FamilyTab({ members, onChanged }: Props) {
   );
 }
 
-function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () => void }) {
-  const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState(PRESET_AVATARS[0]);
-  const [color, setColor] = useState(PRESET_COLORS[0]);
-  const [isKid, setIsKid] = useState(false);
+function MemberForm({
+  initial,
+  onCancel,
+  onSaved,
+}: {
+  initial?: FamilyMember;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [emoji, setEmoji] = useState(initial?.avatar_emoji ?? PRESET_AVATARS[0]);
+  const [color, setColor] = useState(initial?.color ?? PRESET_COLORS[0]);
+  const [isKid, setIsKid] = useState(initial?.is_kid ?? false);
+  const [birthDate, setBirthDate] = useState(initial?.birth_date ?? "");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    await api.createMember({ name: name.trim(), color, avatar_emoji: emoji, is_kid: isKid });
+    const payload = {
+      name: name.trim(),
+      color,
+      avatar_emoji: emoji,
+      is_kid: isKid,
+      birth_date: birthDate ? birthDate : null,
+    };
+    if (initial) {
+      await api.updateMember(initial.id, payload);
+    } else {
+      await api.createMember(payload);
+    }
     onSaved();
   }
 
@@ -102,7 +154,9 @@ function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () =
       onSubmit={submit}
       className="rounded-3xl p-6 bg-surface border border-line shadow-sm grid gap-5 max-w-2xl"
     >
-      <h3 className="font-display text-2xl font-medium">New family member</h3>
+      <h3 className="font-display text-2xl font-medium">
+        {initial ? `Edit ${initial.name}` : "New family member"}
+      </h3>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -148,22 +202,36 @@ function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () =
         </div>
       </div>
 
-      <label className="flex gap-3 items-center text-ink-2 font-medium">
-        <input
-          type="checkbox"
-          checked={isKid}
-          onChange={(e) => setIsKid(e.target.checked)}
-          className="w-5 h-5"
-        />
-        Kid (can earn stars)
-      </label>
+      <div className="grid grid-cols-2 gap-4 max-w-md">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted font-semibold uppercase tracking-wider">
+            Birthday
+          </span>
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+            className="px-3 py-2.5 rounded-xl bg-bg-2 border border-line text-base"
+          />
+        </label>
+        <label className="flex items-end gap-3">
+          <input
+            type="checkbox"
+            checked={isKid}
+            onChange={(e) => setIsKid(e.target.checked)}
+            className="w-5 h-5 mb-2.5"
+          />
+          <span className="font-medium pb-2.5">Kid (can earn stars)</span>
+        </label>
+      </div>
 
       <div className="flex gap-3">
         <button
           type="submit"
           className="px-5 py-3 rounded-2xl bg-ink text-white font-semibold shadow-sm"
         >
-          Save
+          {initial ? "Save changes" : "Create"}
         </button>
         <button
           type="button"

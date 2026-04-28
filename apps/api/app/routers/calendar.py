@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -109,6 +109,51 @@ def disconnect(account_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+def _birthday_events(
+    db: Session, start: datetime, end: datetime
+) -> list[schemas.CalendarEventRead]:
+    members = (
+        db.query(models.FamilyMember)
+        .filter(models.FamilyMember.birth_date.isnot(None))
+        .all()
+    )
+    out: list[schemas.CalendarEventRead] = []
+    for m in members:
+        bday: date = m.birth_date  # type: ignore[assignment]
+        for year in range(start.year, end.year + 1):
+            try:
+                day = bday.replace(year=year)
+            except ValueError:
+                # Feb 29 on a non-leap year: shift to Feb 28
+                day = date(year, bday.month, 28)
+            ev_start = datetime.combine(day, time.min, tzinfo=timezone.utc)
+            ev_end = ev_start + timedelta(days=1)
+            if ev_end <= start or ev_start >= end:
+                continue
+            age = year - bday.year
+            label = f"🎂 {m.name}'s birthday"
+            if age >= 0:
+                label += f" ({age})"
+            # Negative IDs for synthetic events; stable across requests.
+            synth_id = -(m.id * 10000 + (year % 10000))
+            out.append(
+                schemas.CalendarEventRead(
+                    id=synth_id,
+                    google_event_id=f"birthday:{m.id}:{year}",
+                    calendar_id="synthetic",
+                    summary=label,
+                    location=None,
+                    color=m.color,
+                    member_id=m.id,
+                    start_at=ev_start,
+                    end_at=ev_end,
+                    all_day=True,
+                    read_only=True,
+                )
+            )
+    return out
+
+
 @router.get("/events", response_model=list[schemas.CalendarEventRead])
 def list_events(
     days: int = Query(default=None, ge=1, le=60),
@@ -122,7 +167,8 @@ def list_events(
     else:
         start = datetime.now(timezone.utc)
         end = start + timedelta(days=days or 7)
-    return (
+
+    real = (
         db.query(models.CalendarEvent)
         .filter(
             models.CalendarEvent.end_at >= start,
@@ -131,6 +177,10 @@ def list_events(
         .order_by(models.CalendarEvent.start_at)
         .all()
     )
+    real_models = [schemas.CalendarEventRead.model_validate(e) for e in real]
+    combined = real_models + _birthday_events(db, start, end)
+    combined.sort(key=lambda e: e.start_at)
+    return combined
 
 
 @router.post("/sync", status_code=202)

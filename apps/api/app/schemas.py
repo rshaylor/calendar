@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,15 +12,28 @@ class FamilyMemberBase(BaseModel):
     color: str = "#888888"
     avatar_emoji: str = "🙂"
     is_kid: bool = False
+    birth_date: date | None = None
 
 
 class FamilyMemberCreate(FamilyMemberBase):
     pass
 
 
+class FamilyMemberUpdate(BaseModel):
+    name: str | None = None
+    color: str | None = None
+    avatar_emoji: str | None = None
+    is_kid: bool | None = None
+    birth_date: date | None = None
+
+
 class FamilyMemberRead(FamilyMemberBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class FamilyInfo(BaseModel):
+    name: str
 
 
 class ChoreBase(BaseModel):
@@ -179,6 +192,7 @@ class CalendarEventRead(BaseModel):
     start_at: datetime
     end_at: datetime
     all_day: bool
+    read_only: bool = False  # synthetic events (e.g. birthdays) can't be edited
     model_config = ConfigDict(from_attributes=True)
 
 

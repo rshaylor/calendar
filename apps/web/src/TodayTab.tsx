@@ -13,6 +13,7 @@ type Props = {
   members: FamilyMember[];
   chores: Chore[];
   balances: Balance[];
+  familyName?: string;
   onChanged: () => void;
 };
 
@@ -28,7 +29,13 @@ const SECTION_ORDER: Record<string, number> = {
   evening: 2,
 };
 
-export default function TodayTab({ members, chores, balances, onChanged }: Props) {
+export default function TodayTab({
+  members,
+  chores,
+  balances,
+  familyName,
+  onChanged,
+}: Props) {
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [eventsError, setEventsError] = useState<string | null>(null);
 
@@ -88,7 +95,7 @@ export default function TodayTab({ members, chores, balances, onChanged }: Props
     return items.slice(0, 6);
   }, [todays]);
 
-  const greeting = greetingFor(new Date());
+  const greeting = greetingFor(new Date(), familyName);
   const allDayEvents = todayEvents.filter((e) => e.all_day);
   const timedEvents = todayEvents.filter((e) => !e.all_day);
 
@@ -392,12 +399,19 @@ function ProgressRing({
   );
 }
 
-function greetingFor(d: Date): string {
+function greetingFor(d: Date, familyName?: string): string {
   const h = d.getHours();
-  if (h < 5) return "Late night, family";
-  if (h < 12) return "Good morning, family";
-  if (h < 18) return "Good afternoon, family";
-  return "Good evening, family";
+  // If they typed "Shaylor Family" pull out the name part for the greeting
+  const lastWord = (familyName ?? "").trim().toLowerCase().endsWith("family");
+  const subject = familyName && familyName !== "Family Hub"
+    ? lastWord
+      ? familyName.trim().replace(/\s*family\s*$/i, "") + " family"
+      : familyName
+    : "family";
+  if (h < 5) return `Late night, ${subject}`;
+  if (h < 12) return `Good morning, ${subject}`;
+  if (h < 18) return `Good afternoon, ${subject}`;
+  return `Good evening, ${subject}`;
 }
 
 function formatTime(iso: string): string {

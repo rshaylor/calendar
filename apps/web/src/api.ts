@@ -4,9 +4,13 @@ export type FamilyMember = {
   color: string;
   avatar_emoji: string;
   is_kid: boolean;
+  birth_date: string | null; // YYYY-MM-DD
 };
 
 export type FamilyMemberInput = Omit<FamilyMember, "id">;
+export type FamilyMemberPatch = Partial<FamilyMemberInput>;
+
+export type FamilyInfo = { name: string };
 
 export type Recurrence = "none" | "daily" | "weekdays";
 
@@ -90,6 +94,7 @@ export type CalendarEvent = {
   start_at: string;
   end_at: string;
   all_day: boolean;
+  read_only?: boolean;
 };
 
 export type CalendarSubscription = {
@@ -126,7 +131,16 @@ export const api = {
   listMembers: () => request<FamilyMember[]>("/members"),
   createMember: (m: FamilyMemberInput) =>
     request<FamilyMember>("/members", { method: "POST", body: JSON.stringify(m) }),
+  updateMember: (id: number, patch: FamilyMemberPatch) =>
+    request<FamilyMember>(`/members/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
   deleteMember: (id: number) => request<void>(`/members/${id}`, { method: "DELETE" }),
+
+  familyInfo: () => request<FamilyInfo>("/family"),
+  setFamilyInfo: (info: FamilyInfo) =>
+    request<FamilyInfo>("/family", { method: "PUT", body: JSON.stringify(info) }),
 
   listChores: () => request<Chore[]>("/chores"),
   createChore: (c: ChoreInput) =>

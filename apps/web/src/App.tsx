@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type Balance, type Chore, type FamilyMember, type Reward } from "./api";
+import {
+  api,
+  type Balance,
+  type Chore,
+  type FamilyMember,
+  type Reward,
+} from "./api";
 import TodayTab from "./TodayTab";
 import ChoresTab from "./ChoresTab";
 import RewardsTab from "./RewardsTab";
@@ -47,8 +53,26 @@ export default function App() {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
+  const [familyName, setFamilyName] = useState<string>("Family Hub");
 
   const sleep = useSleepMode();
+
+  const loadFamilyName = useCallback(async () => {
+    try {
+      const info = await api.familyInfo();
+      setFamilyName(info.name || "Family Hub");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFamilyName();
+  }, [loadFamilyName]);
+
+  useEffect(() => {
+    document.title = familyName;
+  }, [familyName]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -178,6 +202,11 @@ export default function App() {
       <main className="flex-1 overflow-auto">
         <header className="px-6 md:px-10 py-6 flex items-end gap-4 flex-wrap">
           <div>
+            {familyName && familyName !== "Family Hub" && (
+              <div className="text-[11px] font-bold tracking-[0.16em] uppercase text-muted mb-1">
+                {familyName}
+              </div>
+            )}
             <h1 className="font-display text-4xl md:text-5xl font-medium tracking-tight leading-none">
               {titleOf[tab]}
             </h1>
@@ -197,6 +226,7 @@ export default function App() {
               members={members}
               chores={chores}
               balances={balances}
+              familyName={familyName}
               onChanged={refresh}
             />
           )}
@@ -228,6 +258,7 @@ export default function App() {
             <SettingsTab
               members={members}
               onMembersChanged={refresh}
+              onFamilyNameChanged={loadFamilyName}
               sleepSchedule={sleep.schedule}
               onSleepScheduleChange={sleep.setSchedule}
             />

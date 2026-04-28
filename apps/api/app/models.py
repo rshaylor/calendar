@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 from .db import Base
@@ -22,6 +22,7 @@ class FamilyMember(Base):
     color = Column(String, nullable=False, default="#888888")
     avatar_emoji = Column(String, nullable=False, default="🙂")
     is_kid = Column(Boolean, nullable=False, default=False)
+    birth_date = Column(Date, nullable=True)
 
 
 class Chore(Base):

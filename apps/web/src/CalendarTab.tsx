@@ -248,7 +248,10 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
         members={members}
         days={7}
         startDate={weekStart}
-        onEventClick={(ev) => setEditor({ kind: "edit", event: ev })}
+        onEventClick={(ev) => {
+          if (ev.read_only) return; // birthdays etc. are managed in Family settings
+          setEditor({ kind: "edit", event: ev });
+        }}
         onSlotClick={(start) => setEditor({ kind: "new", defaultStart: start })}
       />
 
