@@ -1,12 +1,29 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
+from googleapiclient.errors import HttpError
 from sqlalchemy.orm import Session
 
 from .. import google_calendar as gcal
 from .. import models, schemas
 from ..db import get_db
+
+log = logging.getLogger("calendar.router")
+
+
+def _google_error_detail(exc: Exception, action: str) -> str:
+    if isinstance(exc, HttpError):
+        try:
+            payload = exc.error_details if hasattr(exc, "error_details") else None
+            reason = payload[0].get("message") if payload else None
+        except Exception:
+            reason = None
+        if not reason:
+            reason = str(exc)
+        return f"Google rejected the {action}: {reason}"
+    return f"{action} failed: {exc}"
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -149,10 +166,12 @@ def create_event(payload: schemas.EventWrite, db: Session = Depends(get_db)):
     body = gcal.build_event_body(
         payload.summary, payload.location, payload.start, payload.end, payload.all_day
     )
+    log.info("Creating event on %s body=%s", sub.google_calendar_id, body)
     try:
         result = gcal.insert_event(account, sub.google_calendar_id, body)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Google API error: {e}")
+        log.exception("event create failed")
+        raise HTTPException(status_code=400, detail=_google_error_detail(e, "create"))
     gcal.sync_account(db, account)
     event = _find_event_after_sync(db, account.id, result["id"])
     if not event:
