@@ -16,7 +16,8 @@ type Props = {
 };
 
 function localDateInput(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const tzOffset = d.getTimezoneOffset() * 60_000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
 }
 
 function localDateTimeInput(d: Date): string {
@@ -28,6 +29,12 @@ function localDateTimeInput(d: Date): string {
 function toIsoFromLocalDateTime(value: string): string {
   // value is "YYYY-MM-DDTHH:mm" in browser local; produce ISO with offset
   return new Date(value).toISOString();
+}
+
+function shiftDateString(yyyymmdd: string, days: number): string {
+  const d = new Date(yyyymmdd + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return localDateInput(d);
 }
 
 export default function EventEditor({ event, subs, defaultStart, onClose, onSaved }: Props) {
@@ -50,12 +57,17 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
     if (event) {
       const s = new Date(event.start_at);
       const e = new Date(event.end_at);
+      // For all-day events the stored end is exclusive (Google's convention).
+      // Show an inclusive end in the UI by subtracting one day.
+      const endStr = event.all_day
+        ? shiftDateString(localDateInput(e), -1)
+        : localDateTimeInput(e);
       return {
         summary: event.summary,
         location: event.location ?? "",
         all_day: event.all_day,
         start: event.all_day ? localDateInput(s) : localDateTimeInput(s),
-        end: event.all_day ? localDateInput(e) : localDateTimeInput(e),
+        end: endStr,
       };
     }
     const s = defaultStart ?? new Date();
@@ -116,8 +128,12 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
     setBusy(true);
     setError(null);
     try {
+      // Google all-day events use exclusive end. UI shows inclusive end,
+      // so add one day on submit.
       const startIso = allDay ? start : toIsoFromLocalDateTime(start);
-      const endIso = allDay ? end : toIsoFromLocalDateTime(end);
+      const endIso = allDay
+        ? shiftDateString(end < start ? start : end, 1)
+        : toIsoFromLocalDateTime(end);
       if (editing && event) {
         const patch: EventPatchBody = {
           subscription_id: subId,
