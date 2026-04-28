@@ -149,11 +149,11 @@ export default function WeekView({
   const gridHeight = totalHours * HOUR_HEIGHT;
 
   return (
-    <div className="rounded-3xl bg-surface border border-line overflow-hidden shadow-sm">
+    <div className="rounded-[28px] bg-surface border border-line overflow-hidden shadow-sm">
       {/* Day header */}
       <div
-        className="grid border-b border-line bg-surface-2/50"
-        style={{ gridTemplateColumns: `60px repeat(${days}, 1fr)` }}
+        className="grid border-b border-line"
+        style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}
       >
         <div />
         {dayList.map((d) => {
@@ -162,16 +162,17 @@ export default function WeekView({
             <div
               key={d.toISOString()}
               className={
-                "px-3 py-3 text-center border-l border-line " +
-                (isToday ? "bg-primary/10" : "")
+                "px-3 py-3 text-center border-l border-line-soft " +
+                (isToday ? "bg-bg-2" : "")
               }
             >
-              <div className="text-xs uppercase tracking-wide text-muted">
+              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">
                 {d.toLocaleDateString(undefined, { weekday: "short" })}
               </div>
               <div
                 className={
-                  "text-2xl font-semibold tabular-nums " + (isToday ? "text-primary" : "")
+                  "font-display text-[26px] font-medium tabular-nums mt-0.5 leading-none " +
+                  (isToday ? "text-primary" : "")
                 }
               >
                 {d.getDate()}
@@ -193,7 +194,7 @@ export default function WeekView({
       {/* Time grid */}
       <div
         className="grid relative"
-        style={{ gridTemplateColumns: `60px repeat(${days}, 1fr)`, height: gridHeight }}
+        style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)`, height: gridHeight }}
       >
         <div>
           {hours.map((h) => (
@@ -266,30 +267,32 @@ export default function WeekView({
                         e.stopPropagation();
                         onEventClick?.(ev);
                       }}
-                      className="absolute rounded-xl px-2 py-1.5 overflow-hidden text-xs shadow-sm text-left hover:shadow-md transition-shadow"
+                      className="absolute rounded-xl px-2 py-1.5 overflow-hidden text-left hover:shadow-md transition-shadow"
                       style={{
                         top,
                         height,
                         left: `calc(${leftPct}% + ${insetPx}px)`,
                         width: `calc(${widthPct}% - ${insetPx * 2}px)`,
-                        background: tint(color, 0.28),
-                        borderLeft: `3px solid ${color}`,
+                        background: tint(color, 0.32),
                         zIndex: slot.track + 1,
                       }}
                       title={`${ev.summary} · ${formatTime(ev.start_at)} – ${formatTime(ev.end_at)}`}
                     >
-                      <div className="font-semibold leading-tight truncate">{ev.summary}</div>
-                      <div className="text-ink-2 leading-tight truncate">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {member && slot.tracks <= 2 && (
+                          <span
+                            className="w-[18px] h-[18px] rounded-full bg-white flex items-center justify-center text-[11px] shrink-0"
+                          >
+                            {member.avatar_emoji}
+                          </span>
+                        )}
+                        <div className="text-[12px] font-bold leading-tight truncate text-ink flex-1">
+                          {ev.summary}
+                        </div>
+                      </div>
+                      <div className="text-[11px] font-semibold text-ink-2 leading-tight truncate">
                         {formatTime(ev.start_at)} – {formatTime(ev.end_at)}
                       </div>
-                      {member && slot.tracks <= 2 && (
-                        <div
-                          className="absolute bottom-1 right-1 w-5 h-5 rounded-full text-[11px] flex items-center justify-center"
-                          style={{ background: "white" }}
-                        >
-                          {member.avatar_emoji}
-                        </div>
-                      )}
                     </button>
                   );
                 });
@@ -335,7 +338,7 @@ function AllDayStrip({
   return (
     <div
       className="grid border-b border-line"
-      style={{ gridTemplateColumns: `60px repeat(${days}, 1fr)` }}
+      style={{ gridTemplateColumns: `64px repeat(${days}, 1fr)` }}
     >
       <div className="text-[10px] text-muted px-2 py-2 self-center uppercase tracking-wide">
         all day
@@ -354,11 +357,8 @@ function AllDayStrip({
                     e.stopPropagation();
                     onEventClick?.(ev);
                   }}
-                  className="w-full rounded-lg px-2 py-1 text-xs truncate font-medium text-left hover:shadow-sm transition-shadow"
-                  style={{
-                    background: tint(color, 0.28),
-                    borderLeft: `3px solid ${color}`,
-                  }}
+                  className="w-full rounded-lg px-2 py-1 text-[11px] truncate font-bold text-left text-ink hover:shadow-sm transition-shadow"
+                  style={{ background: tint(color, 0.32) }}
                   title={ev.summary}
                 >
                   {ev.summary}

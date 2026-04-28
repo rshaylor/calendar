@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type FamilyMember } from "./api";
+import Icon from "./Icon";
 import { PRESET_AVATARS, PRESET_COLORS, tint } from "./ui";
 
 type Props = {
@@ -18,39 +19,58 @@ export default function FamilyTab({ members, onChanged }: Props) {
 
   return (
     <div>
-      {members.length === 0 ? (
-        <p className="text-muted">No family members yet.</p>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className="rounded-3xl p-5 flex items-center gap-4 shadow-sm"
-              style={{ background: tint(m.color, 0.18) }}
+      <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+        {members.map((m) => (
+          <div
+            key={m.id}
+            className="rounded-[20px] bg-surface border border-line shadow-sm p-4 flex items-center gap-3.5"
+          >
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center text-3xl shrink-0"
+              style={{
+                background: tint(m.color, 0.32),
+                boxShadow: `0 0 0 3px ${tint(m.color, 0.5)}`,
+              }}
             >
+              {m.avatar_emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-display text-xl font-medium leading-tight">{m.name}</div>
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center text-3xl"
-                style={{ background: "white" }}
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-1"
+                style={{
+                  background: m.is_kid ? tint(m.color, 0.28) : "var(--color-bg-2)",
+                  color: "var(--color-ink-2)",
+                }}
               >
-                {m.avatar_emoji}
+                {m.is_kid ? "Kid" : "Grown-up"}
               </div>
-              <div className="flex-1">
-                <div className="font-semibold text-lg">{m.name}</div>
-                <div className="text-sm text-ink-2">{m.is_kid ? "Kid" : "Grown-up"}</div>
-              </div>
-              <button
-                onClick={() => remove(m.id)}
-                className="text-sm text-ink-2 hover:text-danger px-3 py-1 rounded-lg hover:bg-white/60"
-              >
-                remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+            <button
+              onClick={() => remove(m.id)}
+              className="w-9 h-9 rounded-full bg-bg-2 hover:bg-line flex items-center justify-center text-ink-2 hover:text-danger"
+              aria-label="Remove member"
+            >
+              <Icon name="trash" size={16} />
+            </button>
+          </div>
+        ))}
 
-      <div className="mt-6">
-        {showForm ? (
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-[20px] border-2 border-dashed border-line p-4 flex items-center gap-3.5 text-muted hover:bg-bg-2 transition"
+          >
+            <div className="w-14 h-14 rounded-full bg-bg-2 flex items-center justify-center shrink-0">
+              <Icon name="plus" size={24} color="var(--color-muted)" />
+            </div>
+            <div className="font-semibold text-base">Add a person</div>
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="mt-4">
           <MemberForm
             onCancel={() => setShowForm(false)}
             onSaved={() => {
@@ -58,15 +78,8 @@ export default function FamilyTab({ members, onChanged }: Props) {
               onChanged();
             }}
           />
-        ) : (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-5 py-3 rounded-2xl bg-primary text-white font-medium shadow-sm hover:opacity-90"
-          >
-            + Add family member
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -87,14 +100,15 @@ function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () =
   return (
     <form
       onSubmit={submit}
-      className="rounded-3xl p-6 bg-surface border border-line shadow-sm grid gap-4"
+      className="rounded-3xl p-6 bg-surface border border-line shadow-sm grid gap-5 max-w-2xl"
     >
+      <h3 className="font-display text-2xl font-medium">New family member</h3>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Name"
         autoFocus
-        className="px-4 py-3 rounded-xl bg-surface-2 border border-line text-lg"
+        className="px-4 py-3 rounded-xl bg-bg-2 border border-line text-lg"
       />
 
       <div>
@@ -107,7 +121,7 @@ function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () =
               onClick={() => setEmoji(e)}
               className={
                 "w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition " +
-                (emoji === e ? "ring-2 ring-primary bg-surface-2" : "hover:bg-surface-2")
+                (emoji === e ? "ring-2 ring-primary bg-bg-2" : "hover:bg-bg-2")
               }
             >
               {e}
@@ -134,7 +148,7 @@ function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () =
         </div>
       </div>
 
-      <label className="flex gap-3 items-center text-ink-2">
+      <label className="flex gap-3 items-center text-ink-2 font-medium">
         <input
           type="checkbox"
           checked={isKid}
@@ -147,14 +161,14 @@ function MemberForm({ onCancel, onSaved }: { onCancel: () => void; onSaved: () =
       <div className="flex gap-3">
         <button
           type="submit"
-          className="px-5 py-3 rounded-2xl bg-primary text-white font-medium shadow-sm"
+          className="px-5 py-3 rounded-2xl bg-ink text-white font-semibold shadow-sm"
         >
           Save
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-5 py-3 rounded-2xl text-ink-2 hover:bg-surface-2"
+          className="px-5 py-3 rounded-2xl text-ink-2 hover:bg-bg-2"
         >
           Cancel
         </button>

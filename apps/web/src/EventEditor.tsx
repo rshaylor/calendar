@@ -6,6 +6,7 @@ import {
   type EventPatchBody,
   type EventWriteBody,
 } from "./api";
+import Icon from "./Icon";
 
 type Props = {
   event: CalendarEvent | null; // null = creating new
@@ -204,9 +205,9 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
           <h3 className="text-lg font-semibold">{editing ? "Edit event" : "New event"}</h3>
           <button
             onClick={onClose}
-            className="ml-auto text-muted hover:text-ink rounded-full w-8 h-8 flex items-center justify-center"
+            className="ml-auto text-muted hover:text-ink rounded-full w-8 h-8 flex items-center justify-center hover:bg-bg-2"
           >
-            ✕
+            <Icon name="x" size={18} />
           </button>
         </div>
 

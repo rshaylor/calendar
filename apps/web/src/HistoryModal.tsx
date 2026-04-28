@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type FamilyMember, type HistoryEntry } from "./api";
+import Icon from "./Icon";
 import { tint } from "./ui";
 
 type Props = {
@@ -77,9 +78,9 @@ export default function HistoryModal({ member, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="text-ink-2 hover:text-ink rounded-full w-8 h-8 flex items-center justify-center"
+            className="text-ink-2 hover:text-ink rounded-full w-8 h-8 flex items-center justify-center hover:bg-white/60"
           >
-            ✕
+            <Icon name="x" size={18} />
           </button>
         </div>
 

@@ -7,21 +7,17 @@ import ListsTab from "./ListsTab";
 import SettingsTab from "./SettingsTab";
 import SleepOverlay, { useSleepMode } from "./SleepOverlay";
 import WeatherPill from "./WeatherPill";
+import Icon from "./Icon";
 import { useIdleTimer } from "./hooks";
 
 type Tab = "calendar" | "chores" | "rewards" | "lists" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "calendar", label: "Calendar", icon: "📅" },
-  { id: "chores", label: "Chores", icon: "✅" },
-  { id: "rewards", label: "Rewards", icon: "⭐" },
-  { id: "lists", label: "Lists", icon: "📝" },
+  { id: "calendar", label: "Calendar", icon: "calendar" },
+  { id: "chores", label: "Chores", icon: "checkSquare" },
+  { id: "rewards", label: "Rewards", icon: "star" },
+  { id: "lists", label: "Lists", icon: "list" },
 ];
-const SETTINGS_TAB: { id: Tab; label: string; icon: string } = {
-  id: "settings",
-  label: "Settings",
-  icon: "⚙️",
-};
 
 const REFRESH_INTERVAL_MS = 30_000;
 const IDLE_RETURN_MS = 5 * 60_000;
@@ -74,83 +70,117 @@ export default function App() {
     }
   }, []);
 
-  // Initial + periodic data refresh
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, REFRESH_INTERVAL_MS);
     return () => clearInterval(t);
   }, [refresh]);
 
-  // Idle return to calendar
   const onIdle = useCallback(() => {
     setTab("calendar");
   }, []);
   useIdleTimer(IDLE_RETURN_MS, onIdle);
 
+  const titleOf: Record<Tab, string> = {
+    calendar: "Calendar",
+    chores: "Chores",
+    rewards: "Rewards",
+    lists: "Lists",
+    settings: "Settings",
+  };
+  const dayShort = now.toLocaleDateString(undefined, { weekday: "short" });
+  const dayNum = now.getDate();
   const time = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  const date = now.toLocaleDateString(undefined, {
+  const longDate = now.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
 
-  const allTabs = [...TABS, SETTINGS_TAB];
-
-  function NavButton({ t }: { t: (typeof allTabs)[number] }) {
-    const active = tab === t.id;
+  function NavItem({
+    id,
+    label,
+    icon,
+    onClick,
+    active,
+  }: {
+    id: string;
+    label: string;
+    icon: string;
+    onClick: () => void;
+    active: boolean;
+  }) {
     return (
       <button
-        onClick={() => setTab(t.id)}
+        key={id}
+        onClick={onClick}
         className={
-          "w-full flex items-center gap-3 px-3 py-3 rounded-2xl transition " +
-          (active ? "bg-primary text-white shadow-sm" : "text-ink-2 hover:bg-surface-2")
+          "w-[72px] py-2.5 rounded-2xl flex flex-col items-center gap-1 transition " +
+          (active ? "bg-ink text-white shadow-sm" : "text-ink-2 hover:bg-surface-2")
         }
       >
-        <span className="text-xl shrink-0">{t.icon}</span>
-        <span className="hidden md:inline font-medium">{t.label}</span>
+        <Icon name={icon} size={22} stroke={active ? 2 : 1.75} />
+        <span className="text-[11px] font-medium">{label}</span>
       </button>
     );
   }
 
   return (
     <div className="flex h-full bg-bg text-ink">
-      <aside className="w-20 md:w-56 shrink-0 border-r border-line bg-surface flex flex-col">
-        <div className="px-5 py-6 hidden md:block">
-          <div className="text-xs uppercase tracking-wider text-muted">Family</div>
-          <div className="text-xl font-semibold">Hub</div>
+      <aside className="w-24 shrink-0 bg-surface border-r border-line flex flex-col items-center py-5">
+        {/* Day card */}
+        <div className="w-16 h-16 rounded-[18px] bg-bg-2 border border-line-soft flex flex-col items-center justify-center mb-1.5">
+          <div className="text-[9px] font-bold tracking-[0.12em] text-muted uppercase">
+            {dayShort}
+          </div>
+          <div className="font-display text-[28px] font-semibold leading-none mt-0.5">
+            {dayNum}
+          </div>
         </div>
-        <div className="md:hidden p-5 text-2xl text-center">🏠</div>
-        <nav className="flex-1 px-3 space-y-1">
+        <div className="text-[22px] font-semibold tabular-nums mb-6">{time}</div>
+
+        <nav className="flex-1 flex flex-col gap-1.5 items-center">
           {TABS.map((t) => (
-            <NavButton key={t.id} t={t} />
+            <NavItem
+              key={t.id}
+              id={t.id}
+              label={t.label}
+              icon={t.icon}
+              active={tab === t.id}
+              onClick={() => setTab(t.id)}
+            />
           ))}
         </nav>
-        <div className="px-3 pb-3 space-y-1">
+
+        <div className="flex flex-col gap-1.5 items-center">
           <button
             onClick={sleep.sleep}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-ink-2 hover:bg-surface-2 transition"
+            className="w-[72px] py-2.5 rounded-2xl flex flex-col items-center gap-1 text-ink-2 hover:bg-surface-2 transition"
             title="Sleep screen"
           >
-            <span className="text-xl shrink-0">🌙</span>
-            <span className="hidden md:inline font-medium">Sleep</span>
+            <Icon name="moon" size={22} />
+            <span className="text-[11px] font-medium">Sleep</span>
           </button>
-          <NavButton t={SETTINGS_TAB} />
+          <NavItem
+            id="settings"
+            label="Settings"
+            icon="settings"
+            active={tab === "settings"}
+            onClick={() => setTab("settings")}
+          />
         </div>
       </aside>
 
       <main className="flex-1 overflow-auto">
         <header className="px-6 md:px-10 py-6 flex items-end gap-4 flex-wrap">
           <div>
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
-              {allTabs.find((t) => t.id === tab)?.label}
+            <h1 className="font-display text-4xl md:text-5xl font-medium tracking-tight leading-none">
+              {titleOf[tab]}
             </h1>
-            <div className="text-muted mt-1">{date}</div>
+            <div className="text-muted mt-1.5">{longDate}</div>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto">
             <WeatherPill />
-            <div className="text-2xl md:text-3xl font-semibold tabular-nums text-ink-2">
-              {time}
-            </div>
           </div>
         </header>
 
@@ -193,7 +223,7 @@ export default function App() {
         </div>
       </main>
 
-      <SleepOverlay active={sleep.active} onWake={sleep.wake} />
+      <SleepOverlay active={sleep.active} onWake={sleep.wake} schedule={sleep.schedule} />
     </div>
   );
 }

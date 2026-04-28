@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Icon from "./Icon";
 import { useLocalStorage } from "./hooks";
 
 export type SleepSchedule = {
@@ -58,9 +59,11 @@ export function useSleepMode() {
 export default function SleepOverlay({
   active,
   onWake,
+  schedule,
 }: {
   active: boolean;
   onWake: () => void;
+  schedule?: SleepSchedule;
 }) {
   const [now, setNow] = useState(new Date());
 
@@ -72,8 +75,13 @@ export default function SleepOverlay({
 
   if (!active) return null;
 
-  const time = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  const date = now.toLocaleDateString(undefined, {
+  // Split into "h:mm" + AM/PM in two scales for the redesign
+  const hours = now.getHours();
+  const mins = now.getMinutes();
+  const period = hours >= 12 ? "PM" : "AM";
+  const hour12 = ((hours + 11) % 12) + 1;
+  const minStr = String(mins).padStart(2, "0");
+  const longDate = now.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -82,13 +90,33 @@ export default function SleepOverlay({
   return (
     <button
       onClick={onWake}
-      className="fixed inset-0 z-[100] bg-black flex items-center justify-center text-white"
+      className="fixed inset-0 z-[100] flex items-center justify-center text-white"
+      style={{
+        background:
+          "radial-gradient(circle at 30% 30%, oklch(0.18 0.05 280) 0%, oklch(0.08 0.02 270) 65%, #000 100%)",
+      }}
       aria-label="Wake screen"
     >
+      {/* Schedule indicator top-right */}
+      {schedule?.enabled && (
+        <div className="absolute top-6 right-8 flex items-center gap-2 opacity-50 text-sm">
+          <Icon name="moon" size={16} color="white" />
+          <span>sleeping until {schedule.waketime}</span>
+        </div>
+      )}
+
+      {/* Centered clock */}
       <div className="text-center">
-        <div className="text-7xl md:text-9xl font-light tabular-nums">{time}</div>
-        <div className="text-xl md:text-2xl mt-4 opacity-50">{date}</div>
-        <div className="text-sm mt-16 opacity-25">tap to wake</div>
+        <div className="font-display tabular-nums" style={{ fontSize: "min(20vw, 168px)", fontWeight: 300, letterSpacing: "-0.02em", lineHeight: 1 }}>
+          {hour12}:{minStr}
+          <span style={{ fontSize: "0.38em", opacity: 0.5, marginLeft: "0.05em" }}>{period}</span>
+        </div>
+        <div className="text-xl md:text-2xl mt-4 opacity-70">{longDate}</div>
+      </div>
+
+      {/* tap to wake */}
+      <div className="absolute bottom-6 left-0 right-0 text-center text-xs opacity-30">
+        tap to wake
       </div>
     </button>
   );

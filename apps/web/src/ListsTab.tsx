@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type TodoItem, type TodoList } from "./api";
+import Icon from "./Icon";
 import { PRESET_LIST_COLORS, PRESET_LIST_EMOJIS, tint } from "./ui";
 
 type FormState = { kind: "closed" } | { kind: "creating" } | { kind: "editing" };
@@ -40,8 +41,10 @@ export default function ListsTab() {
 
   return (
     <div className="grid md:grid-cols-[260px_1fr] gap-6">
-      <aside className="space-y-2">
-        <div className="text-xs uppercase tracking-wide text-muted px-2 mb-1">Lists</div>
+      <aside className="flex flex-col gap-1.5">
+        <div className="text-[11px] font-bold tracking-[0.12em] uppercase text-muted px-3 mb-1">
+          Lists
+        </div>
         {lists.map((l) => {
           const isActive = l.id === activeId && form.kind === "closed";
           return (
@@ -51,33 +54,36 @@ export default function ListsTab() {
                 setActiveId(l.id);
                 setForm({ kind: "closed" });
               }}
-              className={
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition text-left " +
-                (isActive ? "shadow-sm" : "hover:bg-surface-2")
-              }
+              className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left transition"
               style={{
-                background: isActive ? tint(l.color, 0.22) : "transparent",
+                background: isActive ? tint(l.color, 0.28) : "transparent",
+                border: `1px solid ${isActive ? tint(l.color, 0.45) : "transparent"}`,
               }}
             >
-              <span className="text-xl shrink-0">{l.emoji}</span>
-              <span className="flex-1 truncate font-medium">{l.name}</span>
-              <span className="text-xs text-ink-2 tabular-nums">
-                {l.item_count - l.done_count}
+              <span
+                className="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-lg shrink-0"
+                style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)" }}
+              >
+                {l.emoji}
               </span>
+              <span className="flex-1 truncate font-semibold">{l.name}</span>
+              {l.item_count - l.done_count > 0 && (
+                <span className="text-xs font-bold bg-white text-ink px-2 py-0.5 rounded-full tabular-nums">
+                  {l.item_count - l.done_count}
+                </span>
+              )}
             </button>
           );
         })}
 
         <button
           onClick={() => setForm({ kind: "creating" })}
-          className={
-            "w-full px-3 py-2.5 rounded-2xl text-left text-sm font-medium transition " +
-            (form.kind === "creating"
-              ? "bg-primary/10 text-primary"
-              : "text-ink-2 hover:bg-surface-2")
-          }
+          className="w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left text-ink-2 hover:bg-bg-2 font-semibold mt-1"
         >
-          + New list
+          <span className="w-9 h-9 rounded-xl bg-bg-2 flex items-center justify-center shrink-0">
+            <Icon name="plus" size={18} color="var(--color-ink-2)" />
+          </span>
+          New list
         </button>
       </aside>
 
@@ -107,11 +113,13 @@ export default function ListsTab() {
           />
         ) : !active ? (
           <div className="rounded-3xl bg-surface border border-line p-10 text-center text-ink-2">
-            <div className="text-5xl mb-3">📝</div>
+            <div className="w-14 h-14 rounded-2xl bg-bg-2 mx-auto mb-3 flex items-center justify-center">
+              <Icon name="list" size={28} color="var(--color-ink-2)" />
+            </div>
             <p className="mb-4">Create your first list — try "Grocery", "Packing", or "To-do".</p>
             <button
               onClick={() => setForm({ kind: "creating" })}
-              className="px-5 py-2.5 rounded-2xl bg-primary text-white font-medium shadow-sm"
+              className="px-5 py-2.5 rounded-2xl bg-ink text-white font-semibold shadow-sm"
             >
               + New list
             </button>
@@ -179,18 +187,25 @@ function ListView({
 
   return (
     <div
-      className="rounded-3xl border border-line shadow-sm overflow-hidden"
-      style={{ background: tint(list.color, 0.1) }}
+      className="rounded-[28px] border overflow-hidden flex flex-col"
+      style={{
+        background: tint(list.color, 0.14),
+        borderColor: tint(list.color, 0.4),
+      }}
     >
-      <div className="px-6 py-5 flex items-center gap-4 border-b border-line/50">
+      <div
+        className="px-6 py-5 flex items-center gap-4"
+        style={{ borderBottom: `1px solid ${tint(list.color, 0.4)}` }}
+      >
         <div
-          className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-white shadow-sm"
+          className="w-14 h-14 rounded-[18px] bg-white flex items-center justify-center text-3xl shrink-0"
+          style={{ boxShadow: `0 0 0 3px ${tint(list.color, 0.5)}` }}
         >
           {list.emoji}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-semibold truncate">{list.name}</h2>
-          <div className="text-sm text-ink-2">
+          <h2 className="font-display text-3xl font-medium leading-none truncate">{list.name}</h2>
+          <div className="text-sm text-ink-2 mt-1">
             {items.length === 0
               ? "Empty"
               : `${items.length - doneCount} left · ${doneCount} done`}
@@ -198,16 +213,17 @@ function ListView({
         </div>
         <button
           onClick={onEditList}
-          className="text-sm text-ink-2 hover:text-ink px-3 py-1.5 rounded-full hover:bg-white/60"
+          className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:opacity-90"
+          aria-label="Edit list"
         >
-          edit
+          <Icon name="edit" size={18} color="var(--color-ink-2)" />
         </button>
         {doneCount > 0 && (
           <button
             onClick={clearDone}
-            className="text-sm text-ink-2 hover:text-danger px-3 py-1.5 rounded-full hover:bg-white/60"
+            className="px-3 py-2 text-sm rounded-full bg-white hover:bg-white/90 text-ink-2 hover:text-danger font-medium"
           >
-            clear done
+            Clear done
           </button>
         )}
       </div>
@@ -224,17 +240,22 @@ function ListView({
         ))}
       </ul>
 
-      <form onSubmit={add} className="px-4 py-4 border-t border-line/50 flex gap-2">
+      <form
+        onSubmit={add}
+        className="px-4 py-4 flex gap-2"
+        style={{ borderTop: `1px solid ${tint(list.color, 0.4)}` }}
+      >
         <input
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
-          placeholder="Add item…"
-          className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-line/50"
+          placeholder={`Add item to ${list.name}…`}
+          className="flex-1 px-4 py-3 rounded-full bg-white text-base"
+          style={{ border: `1px solid ${tint(list.color, 0.4)}` }}
         />
         <button
           type="submit"
           disabled={!newText.trim()}
-          className="px-4 py-2.5 rounded-xl bg-primary text-white font-medium disabled:opacity-40"
+          className="px-5 py-3 rounded-full bg-ink text-white font-semibold disabled:opacity-40"
         >
           Add
         </button>
@@ -264,16 +285,17 @@ function ListItemRow({
   }
 
   return (
-    <li className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/60 transition">
+    <li className="group flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-white/60 transition">
       <button
         onClick={onToggle}
         aria-label={item.done ? "Mark not done" : "Mark done"}
-        className={
-          "w-6 h-6 shrink-0 rounded-md border-2 flex items-center justify-center transition " +
-          (item.done ? "bg-success border-success text-white" : "border-line bg-white")
-        }
+        className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center transition"
+        style={{
+          background: item.done ? "var(--color-ink)" : "white",
+          border: `2px solid ${item.done ? "var(--color-ink)" : "rgba(0,0,0,0.15)"}`,
+        }}
       >
-        {item.done && <span className="text-sm">✓</span>}
+        {item.done && <Icon name="check" size={16} stroke={3} color="white" />}
       </button>
 
       {editing ? (
@@ -289,13 +311,13 @@ function ListItemRow({
               setText(item.text);
             }
           }}
-          className="flex-1 bg-transparent border-b border-line focus:outline-none focus:border-primary py-1"
+          className="flex-1 bg-transparent border-b border-line focus:outline-none focus:border-primary py-1 text-base"
         />
       ) : (
         <button
           onClick={() => setEditing(true)}
           className={
-            "flex-1 text-left py-1 truncate " +
+            "flex-1 text-left py-1 truncate text-base " +
             (item.done ? "line-through text-muted" : "")
           }
         >
@@ -305,10 +327,10 @@ function ListItemRow({
 
       <button
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 transition text-muted hover:text-danger px-2"
+        className="opacity-0 group-hover:opacity-100 transition text-muted hover:text-danger w-8 h-8 rounded-full inline-flex items-center justify-center"
         aria-label="Delete item"
       >
-        ✕
+        <Icon name="x" size={16} />
       </button>
     </li>
   );
@@ -346,13 +368,13 @@ function ListForm({
       onSubmit={submit}
       className="rounded-3xl bg-surface border border-line shadow-sm p-6 grid gap-5 max-w-2xl"
     >
-      <h3 className="text-lg font-semibold">{initial ? "Edit list" : "New list"}</h3>
+      <h3 className="font-display text-2xl font-medium">{initial ? "Edit list" : "New list"}</h3>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="List name"
         autoFocus
-        className="px-4 py-3 rounded-xl bg-surface-2 border border-line text-lg"
+        className="px-4 py-3 rounded-xl bg-bg-2 border border-line text-lg"
       />
       <div>
         <div className="text-sm text-ink-2 mb-2">Emoji</div>
@@ -364,7 +386,7 @@ function ListForm({
               onClick={() => setEmoji(e)}
               className={
                 "w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition " +
-                (emoji === e ? "ring-2 ring-primary bg-surface-2" : "hover:bg-surface-2")
+                (emoji === e ? "ring-2 ring-primary bg-bg-2" : "hover:bg-bg-2")
               }
             >
               {e}
@@ -392,7 +414,7 @@ function ListForm({
       <div className="flex gap-2">
         <button
           type="submit"
-          className="px-5 py-2.5 rounded-2xl bg-primary text-white font-medium shadow-sm"
+          className="px-5 py-2.5 rounded-2xl bg-ink text-white font-semibold shadow-sm"
         >
           {initial ? "Save changes" : "Create list"}
         </button>
@@ -408,7 +430,7 @@ function ListForm({
         <button
           type="button"
           onClick={onCancel}
-          className="ml-auto px-4 py-2.5 rounded-2xl text-ink-2 hover:bg-surface-2"
+          className="ml-auto px-4 py-2.5 rounded-2xl text-ink-2 hover:bg-bg-2"
         >
           Cancel
         </button>

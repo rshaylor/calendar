@@ -8,6 +8,7 @@ import {
   type TimeOfDay,
 } from "./api";
 import Celebration from "./Celebration";
+import Icon from "./Icon";
 import { PRESET_CHORE_EMOJIS, tint } from "./ui";
 
 type Props = {
@@ -38,11 +39,11 @@ const WEEKDAY_FULL: Record<number, string> = {
   6: "Sat",
 };
 
-const SECTIONS: { key: TimeOfDay | "any"; label: string; emoji: string }[] = [
-  { key: "morning", label: "Morning", emoji: "☀️" },
-  { key: "afternoon", label: "Afternoon", emoji: "🌤️" },
-  { key: "evening", label: "Evening", emoji: "🌙" },
-  { key: "any", label: "Chores", emoji: "🧹" },
+const SECTIONS: { key: TimeOfDay | "any"; label: string; icon: string }[] = [
+  { key: "morning", label: "Morning", icon: "sun" },
+  { key: "afternoon", label: "Afternoon", icon: "cloud" },
+  { key: "evening", label: "Evening", icon: "moon" },
+  { key: "any", label: "Anytime", icon: "checkSquare" },
 ];
 
 function isActiveToday(c: Chore, dow: number): boolean {
@@ -110,12 +111,17 @@ export default function ChoresTab({ members, chores, balances, onChanged }: Prop
     );
   }
 
+  const totalToday = chores.filter((c) => isActiveToday(c, todayDow)).length;
+  const totalDone = chores
+    .filter((c) => isActiveToday(c, todayDow))
+    .reduce((acc, c) => acc + c.done_today_by.length, 0);
+
   return (
     <div>
       <Celebration trigger={celebration.trigger} message={celebration.message} />
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="inline-flex p-1 rounded-full bg-surface-2 border border-line">
+        <div className="inline-flex p-1 rounded-full bg-surface border border-line">
           {(["today", "manage"] as const).map((v) => {
             const active = view === v;
             return (
@@ -123,8 +129,8 @@ export default function ChoresTab({ members, chores, balances, onChanged }: Prop
                 key={v}
                 onClick={() => setView(v)}
                 className={
-                  "px-5 py-2 rounded-full text-sm font-medium transition " +
-                  (active ? "bg-white text-ink shadow-sm" : "text-ink-2")
+                  "px-5 py-2 rounded-full text-sm font-semibold transition " +
+                  (active ? "bg-ink text-white shadow-sm" : "text-ink-2 hover:text-ink")
                 }
               >
                 {v === "today" ? "Today" : "Manage"}
@@ -133,21 +139,32 @@ export default function ChoresTab({ members, chores, balances, onChanged }: Prop
           })}
         </div>
         {view === "today" && (
+          <>
+            <span className="text-sm text-muted">
+              {totalDone} of {totalToday} done
+            </span>
+            <button
+              onClick={() => setHideCompleted((v) => !v)}
+              className={
+                "ml-2 px-4 py-2 rounded-full text-sm font-medium transition border " +
+                (hideCompleted
+                  ? "bg-ink text-white border-ink shadow-sm"
+                  : "bg-surface text-ink-2 border-line hover:bg-surface-2")
+              }
+            >
+              {hideCompleted ? "Showing remaining" : "Hide completed"}
+            </button>
+          </>
+        )}
+        {view === "manage" && (
           <button
-            onClick={() => setHideCompleted((v) => !v)}
-            className={
-              "px-4 py-2 rounded-full text-sm font-medium transition border " +
-              (hideCompleted
-                ? "bg-primary text-white border-primary shadow-sm"
-                : "bg-surface text-ink-2 border-line hover:bg-surface-2")
-            }
+            onClick={() => setShowForm(true)}
+            className="ml-auto px-4 py-2 rounded-full bg-ink text-white text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm"
           >
-            {hideCompleted ? "✓ Hide completed" : "Hide completed"}
+            <Icon name="plus" size={16} color="white" stroke={2.25} />
+            Add chore
           </button>
         )}
-        <span className="ml-auto text-sm text-muted">
-          {chores.length} chore{chores.length === 1 ? "" : "s"}
-        </span>
       </div>
 
       {view === "today" ? (
@@ -214,36 +231,56 @@ function TodayView({
       {memberCards.map(({ member: m, chores: mine }) => {
         const done = mine.filter((c) => c.done_today_by.includes(m.id)).length;
         const total = mine.length;
-        const allDone = total > 0 && done === total;
+        const pct = total === 0 ? 0 : (done / total) * 100;
         return (
           <article
             key={m.id}
-            className="rounded-3xl border border-line shadow-sm p-4 bg-surface"
+            className="rounded-[28px] border border-line bg-surface overflow-hidden flex flex-col shadow-sm"
           >
+            {/* Big colored header band */}
             <header
-              className="flex items-center gap-3 px-2 py-2 rounded-2xl mb-3"
-              style={{ background: tint(m.color, 0.18) }}
+              className="px-5 py-4 flex items-center gap-4"
+              style={{
+                background: tint(m.color, 0.32),
+                borderBottom: `1px solid ${tint(m.color, 0.45)}`,
+              }}
             >
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-white shadow-sm">
+              <div
+                className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-3xl shrink-0"
+                style={{ boxShadow: `0 0 0 3px ${tint(m.color, 0.5)}` }}
+              >
                 {m.avatar_emoji}
               </div>
-              <div className="flex-1">
-                <div className="font-semibold text-lg leading-tight">{m.name}</div>
-                <div className="flex items-center gap-3 text-sm text-ink-2">
-                  <span className="tabular-nums">
-                    ✓ {done}/{total}
+              <div className="flex-1 min-w-0">
+                <div className="font-display text-2xl font-medium leading-tight">{m.name}</div>
+                <div className="flex items-center gap-2.5 mt-1.5">
+                  <div
+                    className="h-1.5 w-28 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.6)" }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        background: m.color,
+                        boxShadow: `0 0 8px ${m.color}`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-ink tabular-nums">
+                    {done}/{total}
                   </span>
-                  {m.is_kid && (
-                    <span className="tabular-nums text-star font-semibold">
-                      ⭐ {balanceFor(m.id)}
-                    </span>
-                  )}
-                  {allDone && <span>✨</span>}
                 </div>
               </div>
+              {m.is_kid && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full font-bold text-ink shrink-0">
+                  <Icon name="starFill" size={14} fill="var(--color-star)" color="var(--color-star)" />
+                  <span className="tabular-nums">{balanceFor(m.id)}</span>
+                </div>
+              )}
             </header>
 
-            <div className="space-y-3">
+            <div className="p-3.5 space-y-3 flex-1 overflow-auto">
               {SECTIONS.map((s) => {
                 const sectionChores = mine.filter((c) =>
                   s.key === "any" ? c.time_of_day == null : c.time_of_day === s.key,
@@ -255,13 +292,13 @@ function TodayView({
                 if (visible.length === 0) return null;
                 return (
                   <section key={s.key}>
-                    <h3 className="text-sm font-semibold text-ink-2 px-1 mb-1.5 flex items-center gap-1.5">
-                      <span>{s.emoji}</span>
-                      <span>{s.label}</span>
+                    <h3 className="text-[11px] font-bold tracking-[0.12em] uppercase text-muted px-1 mb-2 flex items-center gap-2">
+                      <Icon name={s.icon} size={14} color="var(--color-muted)" />
+                      {s.label}
                     </h3>
                     <ul className="space-y-1.5">
                       {visible.map((c) => (
-                        <TaskCard
+                        <TaskRow
                           key={c.id}
                           chore={c}
                           member={m}
@@ -281,7 +318,7 @@ function TodayView({
   );
 }
 
-function TaskCard({
+function TaskRow({
   chore,
   member,
   done,
@@ -297,36 +334,52 @@ function TaskCard({
       <button
         onClick={onToggle}
         className={
-          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition active:scale-[0.99] text-left " +
-          (done ? "opacity-60" : "")
+          "w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition active:scale-[0.99] text-left " +
+          (done ? "opacity-70" : "")
         }
-        style={{ background: tint(member.color, done ? 0.1 : 0.18) }}
+        style={{
+          background: done ? "var(--color-bg-2)" : tint(member.color, 0.16),
+        }}
       >
-        <span className="text-2xl shrink-0">{chore.emoji}</span>
+        <span
+          className="w-[38px] h-[38px] rounded-xl bg-white flex items-center justify-center text-xl shrink-0"
+          style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)" }}
+        >
+          {chore.emoji}
+        </span>
         <div className="flex-1 min-w-0">
           <div
             className={
-              "font-medium leading-tight truncate " + (done ? "line-through" : "")
+              "font-semibold leading-tight " + (done ? "line-through text-muted" : "text-ink")
             }
           >
             {chore.name}
           </div>
           {chore.star_value > 0 && (
-            <div className="text-xs text-ink-2">⭐ {chore.star_value}</div>
+            <div className="flex items-center gap-1 text-xs font-semibold mt-0.5" style={{ color: "var(--color-star)" }}>
+              <Icon name="starFill" size={12} fill="var(--color-star)" color="var(--color-star)" />
+              {chore.star_value}
+            </div>
           )}
         </div>
-        <span
-          className={
-            "w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition " +
-            (done
-              ? "bg-success border-success text-white"
-              : "border-white/70 bg-white/40")
-          }
-        >
-          {done && <span className="text-sm">✓</span>}
-        </span>
+        <Checkbox checked={done} color={member.color} />
       </button>
     </li>
+  );
+}
+
+function Checkbox({ checked, color }: { checked: boolean; color: string }) {
+  return (
+    <span
+      className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 transition"
+      style={{
+        background: checked ? color : "white",
+        border: `2px solid ${checked ? color : "rgba(0,0,0,0.1)"}`,
+        color: "white",
+      }}
+    >
+      {checked && <Icon name="check" size={16} stroke={3} color="white" />}
+    </span>
   );
 }
 
@@ -351,6 +404,19 @@ function ManageView({
 
   return (
     <div>
+      {showForm && (
+        <div className="mb-4">
+          <ChoreForm
+            members={members}
+            onCancel={() => setShowForm(false)}
+            onSaved={() => {
+              setShowForm(false);
+              onChanged();
+            }}
+          />
+        </div>
+      )}
+
       {chores.length === 0 ? (
         <div className="rounded-3xl bg-surface border border-line p-8 text-center text-ink-2">
           No chores yet.
@@ -363,7 +429,7 @@ function ManageView({
               className="rounded-3xl bg-surface border border-line p-5 shadow-sm"
             >
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-surface-2 flex items-center justify-center text-3xl shrink-0">
+                <div className="w-14 h-14 rounded-2xl bg-bg-2 flex items-center justify-center text-3xl shrink-0">
                   {c.emoji}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -379,16 +445,20 @@ function ManageView({
                     {c.star_value > 0 && (
                       <>
                         <span>·</span>
-                        <span className="text-star">⭐ {c.star_value}</span>
+                        <span className="inline-flex items-center gap-1" style={{ color: "var(--color-star)" }}>
+                          <Icon name="starFill" size={12} fill="var(--color-star)" color="var(--color-star)" />
+                          {c.star_value}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
                 <button
                   onClick={() => remove(c.id)}
-                  className="text-sm text-muted hover:text-danger px-2 py-1"
+                  className="w-9 h-9 rounded-full text-muted hover:bg-bg-2 hover:text-danger inline-flex items-center justify-center"
+                  aria-label="Delete chore"
                 >
-                  remove
+                  <Icon name="trash" size={18} />
                 </button>
               </div>
               {c.assignees.length > 0 && (
@@ -396,7 +466,7 @@ function ManageView({
                   {c.assignees.map((a) => (
                     <div
                       key={a.id}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs"
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
                       style={{ background: tint(a.color, 0.2) }}
                     >
                       <span>{a.avatar_emoji}</span>
@@ -409,26 +479,6 @@ function ManageView({
           ))}
         </ul>
       )}
-
-      <div className="mt-6">
-        {showForm ? (
-          <ChoreForm
-            members={members}
-            onCancel={() => setShowForm(false)}
-            onSaved={() => {
-              setShowForm(false);
-              onChanged();
-            }}
-          />
-        ) : (
-          <button
-            onClick={() => setShowForm(true)}
-            className="px-5 py-3 rounded-2xl bg-primary text-white font-medium shadow-sm hover:opacity-90"
-          >
-            + Add chore
-          </button>
-        )}
-      </div>
     </div>
   );
 }
@@ -498,11 +548,11 @@ function ChoreForm({
     { value: "none", label: "One-off", hint: "no repeat" },
   ];
 
-  const TOD_OPTIONS: { value: TimeOfDay | ""; label: string; emoji: string }[] = [
-    { value: "", label: "Anytime", emoji: "🧹" },
-    { value: "morning", label: "Morning", emoji: "☀️" },
-    { value: "afternoon", label: "Afternoon", emoji: "🌤️" },
-    { value: "evening", label: "Evening", emoji: "🌙" },
+  const TOD_OPTIONS: { value: TimeOfDay | ""; label: string; icon: string }[] = [
+    { value: "", label: "Anytime", icon: "checkSquare" },
+    { value: "morning", label: "Morning", icon: "sun" },
+    { value: "afternoon", label: "Afternoon", icon: "cloud" },
+    { value: "evening", label: "Evening", icon: "moon" },
   ];
 
   return (
@@ -510,12 +560,13 @@ function ChoreForm({
       onSubmit={submit}
       className="rounded-3xl p-6 bg-surface border border-line shadow-sm grid gap-5"
     >
+      <h3 className="font-display text-2xl font-medium">New chore</h3>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Chore name (e.g. Make bed)"
         autoFocus
-        className="px-4 py-3 rounded-xl bg-surface-2 border border-line text-lg"
+        className="px-4 py-3 rounded-xl bg-bg-2 border border-line text-lg"
       />
 
       <div>
@@ -528,7 +579,7 @@ function ChoreForm({
               onClick={() => setEmoji(e)}
               className={
                 "w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition " +
-                (emoji === e ? "ring-2 ring-primary bg-surface-2" : "hover:bg-surface-2")
+                (emoji === e ? "ring-2 ring-primary bg-bg-2" : "hover:bg-bg-2")
               }
             >
               {e}
@@ -548,13 +599,13 @@ function ChoreForm({
                 type="button"
                 onClick={() => setTimeOfDay(opt.value)}
                 className={
-                  "rounded-2xl px-3 py-2.5 transition border text-center " +
+                  "rounded-2xl px-3 py-3 transition border text-center flex flex-col items-center gap-1 " +
                   (active
-                    ? "bg-primary text-white border-primary shadow-sm"
-                    : "bg-surface border-line hover:bg-surface-2")
+                    ? "bg-ink text-white border-ink shadow-sm"
+                    : "bg-surface border-line hover:bg-bg-2 text-ink-2")
                 }
               >
-                <div className="text-xl">{opt.emoji}</div>
+                <Icon name={opt.icon} size={20} color={active ? "white" : "currentColor"} />
                 <div className="text-xs font-medium">{opt.label}</div>
               </button>
             );
@@ -575,8 +626,8 @@ function ChoreForm({
                 className={
                   "rounded-2xl px-3 py-2.5 text-left transition border " +
                   (active
-                    ? "bg-primary text-white border-primary shadow-sm"
-                    : "bg-surface border-line hover:bg-surface-2")
+                    ? "bg-ink text-white border-ink shadow-sm"
+                    : "bg-surface border-line hover:bg-bg-2")
                 }
               >
                 <div className="font-medium text-sm">{opt.label}</div>
@@ -589,40 +640,38 @@ function ChoreForm({
         </div>
 
         {repeat === "custom" && (
-          <div className="mt-3">
-            <div className="flex gap-2 flex-wrap">
-              {WEEKDAY_UI.map((d) => {
-                const on = customDays.includes(d.value);
-                return (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => toggleDay(d.value)}
-                    className={
-                      "w-14 h-12 rounded-xl text-sm font-medium transition " +
-                      (on
-                        ? "bg-primary text-white shadow-sm"
-                        : "bg-surface-2 text-ink-2 border border-line hover:bg-line")
-                    }
-                  >
-                    {d.short}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="mt-3 flex gap-2 flex-wrap">
+            {WEEKDAY_UI.map((d) => {
+              const on = customDays.includes(d.value);
+              return (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => toggleDay(d.value)}
+                  className={
+                    "w-14 h-12 rounded-xl text-sm font-medium transition " +
+                    (on
+                      ? "bg-ink text-white shadow-sm"
+                      : "bg-bg-2 text-ink-2 border border-line hover:bg-line")
+                  }
+                >
+                  {d.short}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
       <label className="flex flex-col gap-1 max-w-xs">
-        <span className="text-sm text-ink-2">Stars ⭐</span>
+        <span className="text-sm text-ink-2">Stars</span>
         <input
           type="number"
           min={0}
           max={20}
           value={stars}
           onChange={(e) => setStars(parseInt(e.target.value || "0", 10))}
-          className="px-3 py-2 rounded-xl bg-surface-2 border border-line"
+          className="px-3 py-2 rounded-xl bg-bg-2 border border-line"
         />
       </label>
 
@@ -653,14 +702,14 @@ function ChoreForm({
       <div className="flex gap-3">
         <button
           type="submit"
-          className="px-5 py-3 rounded-2xl bg-primary text-white font-medium shadow-sm"
+          className="px-5 py-3 rounded-2xl bg-ink text-white font-semibold shadow-sm"
         >
           Save chore
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-5 py-3 rounded-2xl text-ink-2 hover:bg-surface-2"
+          className="px-5 py-3 rounded-2xl text-ink-2 hover:bg-bg-2"
         >
           Cancel
         </button>

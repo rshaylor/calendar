@@ -1,8 +1,19 @@
+import { useState } from "react";
 import type { FamilyMember } from "./api";
 import FamilyTab from "./FamilyTab";
 import CalendarSettings from "./CalendarSettings";
 import WeatherSettings from "./WeatherSettings";
+import Icon from "./Icon";
 import type { SleepSchedule } from "./SleepOverlay";
+
+type Section = "family" | "calendar" | "weather" | "sleep";
+
+const SECTIONS: { id: Section; label: string; icon: string }[] = [
+  { id: "family", label: "Family", icon: "users" },
+  { id: "calendar", label: "Calendar", icon: "calendar" },
+  { id: "weather", label: "Weather", icon: "cloudSun" },
+  { id: "sleep", label: "Sleep", icon: "moon" },
+];
 
 type Props = {
   members: FamilyMember[];
@@ -17,27 +28,67 @@ export default function SettingsTab({
   sleepSchedule,
   onSleepScheduleChange,
 }: Props) {
+  const [section, setSection] = useState<Section>("family");
+
   return (
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-xl font-semibold mb-3">Family</h2>
-        <FamilyTab members={members} onChanged={onMembersChanged} />
-      </section>
+    <div className="grid md:grid-cols-[240px_1fr] gap-6">
+      <aside className="flex flex-col gap-1">
+        {SECTIONS.map((s) => {
+          const active = section === s.id;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSection(s.id)}
+              className={
+                "flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left font-semibold transition " +
+                (active
+                  ? "bg-surface border border-line text-ink shadow-sm"
+                  : "text-ink-2 hover:bg-bg-2 border border-transparent")
+              }
+            >
+              <Icon
+                name={s.icon}
+                size={20}
+                color={active ? "var(--color-ink)" : "var(--color-ink-2)"}
+              />
+              {s.label}
+            </button>
+          );
+        })}
+      </aside>
 
-      <div className="grid gap-8 xl:grid-cols-3">
-        <section className="xl:col-span-2">
-          <h2 className="text-xl font-semibold mb-3">Calendar</h2>
-          <CalendarSettings members={members} />
-        </section>
-
-        <div className="space-y-8">
+      <main className="min-w-0">
+        {section === "family" && (
           <section>
-            <h2 className="text-xl font-semibold mb-3">Sleep mode</h2>
-            <div className="rounded-3xl bg-surface border border-line shadow-sm p-5">
-              <p className="text-sm text-ink-2 mb-3">
-                Auto-dim the screen at bedtime. Tap the screen to wake it up early. Use the
-                🌙 button in the sidebar to sleep manually anytime.
-              </p>
+            <h2 className="font-display text-3xl font-medium mb-1">Family</h2>
+            <p className="text-muted mb-5">Add or remove people. Tap an avatar to edit color and name.</p>
+            <FamilyTab members={members} onChanged={onMembersChanged} />
+          </section>
+        )}
+
+        {section === "calendar" && (
+          <section>
+            <h2 className="font-display text-3xl font-medium mb-1">Calendar</h2>
+            <p className="text-muted mb-5">Connect Google accounts and assign calendars to family members.</p>
+            <CalendarSettings members={members} />
+          </section>
+        )}
+
+        {section === "weather" && (
+          <section>
+            <h2 className="font-display text-3xl font-medium mb-1">Weather</h2>
+            <p className="text-muted mb-5">Set your latitude / longitude. Open-Meteo is used (no API key needed).</p>
+            <WeatherSettings />
+          </section>
+        )}
+
+        {section === "sleep" && (
+          <section>
+            <h2 className="font-display text-3xl font-medium mb-1">Sleep mode</h2>
+            <p className="text-muted mb-5">
+              Auto-dim the screen at bedtime. Tap the screen to wake it early. Use the moon button in the sidebar to sleep manually anytime.
+            </p>
+            <div className="rounded-3xl bg-surface border border-line shadow-sm p-5 max-w-xl">
               <label className="flex items-center gap-3 mb-4">
                 <input
                   type="checkbox"
@@ -47,11 +98,11 @@ export default function SettingsTab({
                   }
                   className="w-5 h-5"
                 />
-                <span>Sleep on a schedule</span>
+                <span className="font-semibold">Sleep on a schedule</span>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">Bedtime</span>
+                  <span className="text-xs text-muted font-semibold uppercase tracking-wider">Bedtime</span>
                   <input
                     type="time"
                     value={sleepSchedule.bedtime}
@@ -59,11 +110,11 @@ export default function SettingsTab({
                       onSleepScheduleChange({ ...sleepSchedule, bedtime: e.target.value })
                     }
                     disabled={!sleepSchedule.enabled}
-                    className="px-3 py-2 rounded-xl bg-surface-2 border border-line disabled:opacity-50"
+                    className="px-3 py-2.5 rounded-xl bg-bg-2 border border-line disabled:opacity-50 text-base"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-xs text-muted">Waketime</span>
+                  <span className="text-xs text-muted font-semibold uppercase tracking-wider">Waketime</span>
                   <input
                     type="time"
                     value={sleepSchedule.waketime}
@@ -71,19 +122,14 @@ export default function SettingsTab({
                       onSleepScheduleChange({ ...sleepSchedule, waketime: e.target.value })
                     }
                     disabled={!sleepSchedule.enabled}
-                    className="px-3 py-2 rounded-xl bg-surface-2 border border-line disabled:opacity-50"
+                    className="px-3 py-2.5 rounded-xl bg-bg-2 border border-line disabled:opacity-50 text-base"
                   />
                 </label>
               </div>
             </div>
           </section>
-
-          <section>
-            <h2 className="text-xl font-semibold mb-3">Weather</h2>
-            <WeatherSettings />
-          </section>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 }
