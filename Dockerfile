@@ -1,11 +1,12 @@
 # Home Assistant add-on Dockerfile.
 # (For direct Pi deploy via docker-compose, see Dockerfile.prod.)
 #
-# BUILD_FROM is set by the HA supervisor per architecture; a default is
+# BUILD_ARCH is set by the HA supervisor (aarch64, amd64, ...) and is
+# used to select the matching official base image. A default is
 # provided so local `docker build` works for testing.
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.18
+ARG BUILD_ARCH=amd64
 
-# Stage 1: build the React frontend (Node Alpine, arch-agnostic).
+# Stage 1: build the React frontend (Node Alpine is multi-arch).
 FROM node:22-alpine AS web-build
 WORKDIR /web
 COPY apps/web/package.json apps/web/package-lock.json ./
@@ -14,7 +15,7 @@ COPY apps/web/ ./
 RUN npm run build
 
 # Stage 2: HA add-on runtime — Alpine base with bashio for options handling.
-FROM ${BUILD_FROM}
+FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.18
 
 RUN apk add --no-cache python3 py3-pip
 
