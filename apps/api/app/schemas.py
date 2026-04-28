@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Recurrence = Literal["none", "daily", "weekly"]
+Recurrence = Literal["none", "daily", "weekdays"]
 
 
 class FamilyMemberBase(BaseModel):
@@ -27,6 +27,8 @@ class ChoreBase(BaseModel):
     emoji: str = "✅"
     star_value: int = Field(default=0, ge=0)
     recurrence: Recurrence = "none"
+    # 0=Sun..6=Sat. Only meaningful when recurrence == "weekdays".
+    weekdays: list[int] | None = None
 
 
 class ChoreCreate(ChoreBase):
@@ -86,6 +88,51 @@ class RedemptionRead(BaseModel):
 class Balance(BaseModel):
     member_id: int
     stars: int
+
+
+class TodoListBase(BaseModel):
+    name: str
+    emoji: str = "📝"
+    color: str = "#86b9f7"
+
+
+class TodoListCreate(TodoListBase):
+    pass
+
+
+class TodoListUpdate(BaseModel):
+    name: str | None = None
+    emoji: str | None = None
+    color: str | None = None
+
+
+class TodoListRead(TodoListBase):
+    id: int
+    position: int
+    item_count: int = 0
+    done_count: int = 0
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TodoItemBase(BaseModel):
+    text: str
+    done: bool = False
+
+
+class TodoItemCreate(TodoItemBase):
+    pass
+
+
+class TodoItemUpdate(BaseModel):
+    text: str | None = None
+    done: bool | None = None
+
+
+class TodoItemRead(TodoItemBase):
+    id: int
+    list_id: int
+    position: int
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GoogleAccountRead(BaseModel):

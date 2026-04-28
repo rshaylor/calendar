@@ -7,14 +7,17 @@ type Props = {
   chores: Chore[];
 };
 
-// "Today" includes daily and one-off chores (matches the Today filter in ChoresTab)
-function isTodayChore(c: Chore): boolean {
-  return c.recurrence === "daily" || c.recurrence === "none";
+// "Today" includes any chore that's active for today's day of week.
+function isActiveToday(c: Chore, dow: number): boolean {
+  if (c.recurrence === "none" || c.recurrence === "daily") return true;
+  if (c.recurrence === "weekdays") return (c.weekdays ?? []).includes(dow);
+  return true;
 }
 
 export default function MemberProgress({ members, chores }: Props) {
   const stats = useMemo(() => {
-    const today = chores.filter(isTodayChore);
+    const dow = new Date().getDay();
+    const today = chores.filter((c) => isActiveToday(c, dow));
     return members.map((m) => {
       const assigned = today.filter((c) => c.assignees.some((a) => a.id === m.id));
       const done = assigned.filter((c) => c.done_today_by.includes(m.id)).length;

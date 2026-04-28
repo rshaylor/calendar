@@ -2,6 +2,15 @@ export const PRESET_COLORS = ["#f59ec1", "#fbbf6f", "#9bd49b", "#86b9f7", "#c8a4
 export const PRESET_AVATARS = ["🦊", "🐻", "🐼", "🦁", "🐸", "🐙", "🐳", "🦄"];
 export const PRESET_CHORE_EMOJIS = ["🧹", "🍽️", "🛏️", "🪥", "🧺", "🚮", "📚", "🐾", "🚿", "✅"];
 export const PRESET_REWARD_EMOJIS = ["🎁", "🍦", "🎬", "🎮", "🍕", "🏊", "🎨", "💰", "📱", "🧸"];
+export const PRESET_LIST_EMOJIS = ["📝", "🛒", "✈️", "🎒", "🏠", "💡", "🎁", "🍳", "🛠️", "🐾"];
+export const PRESET_LIST_COLORS = [
+  "#86b9f7",
+  "#f59ec1",
+  "#fbbf6f",
+  "#9bd49b",
+  "#c8a4ee",
+  "#f59c9c",
+];
 
 export function tint(hex: string, alpha: number): string {
   const h = hex.replace("#", "");

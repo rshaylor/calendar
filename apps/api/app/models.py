@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 from .db import Base
@@ -31,8 +31,11 @@ class Chore(Base):
     name = Column(String, nullable=False)
     emoji = Column(String, nullable=False, default="✅")
     star_value = Column(Integer, nullable=False, default=0)
-    # "none" = one-shot, "daily", "weekly"
+    # "none" = one-shot, "daily", "weekdays" (days-of-week list)
     recurrence = Column(String, nullable=False, default="none")
+    # Active days of week when recurrence == "weekdays".
+    # Stored as a JSON array of ints, JS-style: 0=Sun..6=Sat
+    weekdays = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     assignees = relationship("FamilyMember", secondary=chore_assignees, lazy="joined")
@@ -90,6 +93,28 @@ class CalendarSubscription(Base):
     is_primary = Column(Boolean, nullable=False, default=False)
     enabled = Column(Boolean, nullable=False, default=False)
     member_id = Column(Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True)
+
+
+class TodoList(Base):
+    __tablename__ = "todo_lists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    emoji = Column(String, nullable=False, default="📝")
+    color = Column(String, nullable=False, default="#86b9f7")
+    position = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class TodoItem(Base):
+    __tablename__ = "todo_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    list_id = Column(Integer, ForeignKey("todo_lists.id", ondelete="CASCADE"), nullable=False, index=True)
+    text = Column(String, nullable=False)
+    done = Column(Boolean, nullable=False, default=False)
+    position = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 class CalendarEvent(Base):

@@ -3,17 +3,19 @@ import { api, type Balance, type Chore, type FamilyMember, type Reward } from ".
 import ChoresTab from "./ChoresTab";
 import RewardsTab from "./RewardsTab";
 import CalendarTab from "./CalendarTab";
+import ListsTab from "./ListsTab";
 import SettingsTab from "./SettingsTab";
 import SleepOverlay, { useSleepMode } from "./SleepOverlay";
 import WeatherPill from "./WeatherPill";
 import { useIdleTimer } from "./hooks";
 
-type Tab = "calendar" | "chores" | "rewards" | "settings";
+type Tab = "calendar" | "chores" | "rewards" | "lists" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "calendar", label: "Calendar", icon: "📅" },
   { id: "chores", label: "Chores", icon: "✅" },
   { id: "rewards", label: "Rewards", icon: "⭐" },
+  { id: "lists", label: "Lists", icon: "📝" },
 ];
 const SETTINGS_TAB: { id: Tab; label: string; icon: string } = {
   id: "settings",
@@ -27,7 +29,14 @@ const IDLE_RETURN_MS = 5 * 60_000;
 function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
   const t = params.get("tab");
-  if (t === "calendar" || t === "chores" || t === "rewards" || t === "settings") return t;
+  if (
+    t === "calendar" ||
+    t === "chores" ||
+    t === "rewards" ||
+    t === "lists" ||
+    t === "settings"
+  )
+    return t;
   return "calendar";
 }
 
@@ -165,6 +174,7 @@ export default function App() {
               onChanged={refresh}
             />
           )}
+          {tab === "lists" && <ListsTab />}
           {tab === "settings" && (
             <SettingsTab
               members={members}

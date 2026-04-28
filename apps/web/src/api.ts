@@ -8,7 +8,10 @@ export type FamilyMember = {
 
 export type FamilyMemberInput = Omit<FamilyMember, "id">;
 
-export type Recurrence = "none" | "daily" | "weekly";
+export type Recurrence = "none" | "daily" | "weekdays";
+
+// JS-style: 0=Sun, 1=Mon, ..., 6=Sat
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export type Chore = {
   id: number;
@@ -16,6 +19,7 @@ export type Chore = {
   emoji: string;
   star_value: number;
   recurrence: Recurrence;
+  weekdays: number[] | null;
   assignees: FamilyMember[];
   done_today_by: number[];
 };
@@ -25,6 +29,7 @@ export type ChoreInput = {
   emoji: string;
   star_value: number;
   recurrence: Recurrence;
+  weekdays: number[] | null;
   assignee_ids: number[];
 };
 
@@ -159,6 +164,52 @@ export const api = {
     request<void>(`/calendar/events/${id}`, { method: "DELETE" }),
 
   weather: () => request<Weather>("/weather"),
+
+  listLists: () => request<TodoList[]>("/lists"),
+  createList: (body: TodoListInput) =>
+    request<TodoList>("/lists", { method: "POST", body: JSON.stringify(body) }),
+  updateList: (id: number, body: Partial<TodoListInput>) =>
+    request<TodoList>(`/lists/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteList: (id: number) => request<void>(`/lists/${id}`, { method: "DELETE" }),
+  listItems: (listId: number) => request<TodoItem[]>(`/lists/${listId}/items`),
+  createItem: (listId: number, text: string) =>
+    request<TodoItem>(`/lists/${listId}/items`, {
+      method: "POST",
+      body: JSON.stringify({ text, done: false }),
+    }),
+  updateItem: (itemId: number, body: Partial<{ text: string; done: boolean }>) =>
+    request<TodoItem>(`/lists/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteItem: (itemId: number) =>
+    request<void>(`/lists/items/${itemId}`, { method: "DELETE" }),
+  clearDone: (listId: number) =>
+    request<void>(`/lists/${listId}/clear-done`, { method: "POST" }),
+};
+
+export type TodoList = {
+  id: number;
+  name: string;
+  emoji: string;
+  color: string;
+  position: number;
+  item_count: number;
+  done_count: number;
+};
+
+export type TodoListInput = {
+  name: string;
+  emoji?: string;
+  color?: string;
+};
+
+export type TodoItem = {
+  id: number;
+  list_id: number;
+  text: string;
+  done: boolean;
+  position: number;
 };
 
 export type Weather = {
