@@ -182,7 +182,7 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
   if (writableSubs.length === 0) {
     return (
       <Backdrop onClose={onClose}>
-        <div className="bg-surface rounded-3xl p-6 w-full max-w-md shadow-xl">
+        <div className="bg-surface rounded-3xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
           <h3 className="text-lg font-semibold mb-2">No calendars enabled</h3>
           <p className="text-ink-2 mb-4">
             Enable at least one calendar in Settings before you can add events.
@@ -200,7 +200,7 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
 
   return (
     <Backdrop onClose={onClose}>
-      <div className="bg-surface rounded-3xl p-6 w-full max-w-md shadow-xl">
+      <div className="bg-surface rounded-3xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center mb-4">
           <h3 className="text-lg font-semibold">{editing ? "Edit event" : "New event"}</h3>
           <button
@@ -230,7 +230,7 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
             All day
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-muted">Start</span>
               <input

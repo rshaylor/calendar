@@ -27,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "lists", label: "Lists", icon: "list" },
 ];
 
+const REFRESH_INTERVAL_MS = 60_000; // multi-device on home Wi-Fi
 const IDLE_RETURN_MS = 5 * 60_000;
 
 function initialTab(): Tab {
@@ -96,11 +97,12 @@ export default function App() {
     }
   }, []);
 
-  // Single-device wall panel: refresh on mount only. User actions
-  // call refresh() via onChanged. There's a manual "sync now" button
-  // on the calendar for the Google side.
+  // Multi-device on home Wi-Fi: poll periodically so a chore ticked
+  // on the kitchen wall reflects on someone's phone within ~60s.
   useEffect(() => {
     refresh();
+    const t = setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => clearInterval(t);
   }, [refresh]);
 
   const onIdle = useCallback(() => {
@@ -155,7 +157,8 @@ export default function App() {
 
   return (
     <div className="flex h-full bg-bg text-ink">
-      <aside className="w-24 shrink-0 bg-surface border-r border-line flex flex-col items-center py-5">
+      {/* Desktop sidebar — hidden on mobile */}
+      <aside className="hidden md:flex w-24 shrink-0 bg-surface border-r border-line flex-col items-center py-5">
         {/* Day card */}
         <div className="w-16 h-16 rounded-[18px] bg-bg-2 border border-line-soft flex flex-col items-center justify-center mb-1.5">
           <div className="text-[9px] font-bold tracking-[0.12em] text-muted uppercase">
@@ -199,21 +202,30 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
-        <header className="px-6 md:px-10 py-6 flex items-end gap-4 flex-wrap">
-          <div>
+      <main className="flex-1 overflow-auto pb-20 md:pb-0">
+        <header className="px-5 md:px-10 py-4 md:py-6 flex items-end gap-3 md:gap-4 flex-wrap">
+          <div className="min-w-0">
             {familyName && familyName !== "Family Hub" && (
               <div className="text-[11px] font-bold tracking-[0.16em] uppercase text-muted mb-1">
                 {familyName}
               </div>
             )}
-            <h1 className="font-display text-4xl md:text-5xl font-medium tracking-tight leading-none">
+            <h1 className="font-display text-3xl md:text-5xl font-medium tracking-tight leading-none">
               {titleOf[tab]}
             </h1>
-            <div className="text-muted mt-1.5">{longDate}</div>
+            <div className="text-muted mt-1 md:mt-1.5 text-sm md:text-base">{longDate}</div>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
             <WeatherPill />
+            {/* Mobile-only sleep button — sidebar handles it on desktop */}
+            <button
+              onClick={sleep.sleep}
+              className="md:hidden w-10 h-10 rounded-full bg-surface border border-line flex items-center justify-center text-ink-2"
+              aria-label="Sleep screen"
+              title="Sleep screen"
+            >
+              <Icon name="moon" size={18} />
+            </button>
           </div>
         </header>
 
@@ -265,6 +277,29 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Mobile bottom tab bar */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-line flex items-stretch z-40"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {[...TABS, { id: "settings" as Tab, label: "Settings", icon: "settings" }].map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                "flex-1 py-2 flex flex-col items-center gap-0.5 transition " +
+                (active ? "text-ink" : "text-muted")
+              }
+            >
+              <Icon name={t.icon} size={22} stroke={active ? 2.25 : 1.75} />
+              <span className="text-[10px] font-semibold">{t.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
       <SleepOverlay
         active={sleep.active}

@@ -8,6 +8,7 @@ import {
   type FamilyMember,
 } from "./api";
 import WeekView from "./WeekView";
+import MobileAgenda from "./MobileAgenda";
 import EventEditor from "./EventEditor";
 import Icon from "./Icon";
 import { tint } from "./ui";
@@ -163,7 +164,7 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="font-display text-2xl font-medium">
+        <div className="font-display text-xl md:text-2xl font-medium">
           {formatRange(weekStart, addDays(weekStart, 6))}
         </div>
         <div className="inline-flex items-center gap-1 p-1 rounded-full bg-surface border border-line">
@@ -243,17 +244,29 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
         </div>
       </div>
 
-      <WeekView
-        events={filtered}
-        members={members}
-        days={7}
-        startDate={weekStart}
-        onEventClick={(ev) => {
-          if (ev.read_only) return; // birthdays etc. are managed in Family settings
-          setEditor({ kind: "edit", event: ev });
-        }}
-        onSlotClick={(start) => setEditor({ kind: "new", defaultStart: start })}
-      />
+      <div className="hidden md:block">
+        <WeekView
+          events={filtered}
+          members={members}
+          days={7}
+          startDate={weekStart}
+          onEventClick={(ev) => {
+            if (ev.read_only) return; // birthdays managed in Family settings
+            setEditor({ kind: "edit", event: ev });
+          }}
+          onSlotClick={(start) => setEditor({ kind: "new", defaultStart: start })}
+        />
+      </div>
+      <div className="md:hidden">
+        <MobileAgenda
+          events={filtered}
+          members={members}
+          onEventClick={(ev) => {
+            if (ev.read_only) return;
+            setEditor({ kind: "edit", event: ev });
+          }}
+        />
+      </div>
 
       {editor.kind !== "closed" && (
         <EventEditor
