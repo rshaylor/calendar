@@ -27,7 +27,6 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "lists", label: "Lists", icon: "list" },
 ];
 
-const REFRESH_INTERVAL_MS = 30_000;
 const IDLE_RETURN_MS = 5 * 60_000;
 
 function initialTab(): Tab {
@@ -97,10 +96,11 @@ export default function App() {
     }
   }, []);
 
+  // Single-device wall panel: refresh on mount only. User actions
+  // call refresh() via onChanged. There's a manual "sync now" button
+  // on the calendar for the Google side.
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, REFRESH_INTERVAL_MS);
-    return () => clearInterval(t);
   }, [refresh]);
 
   const onIdle = useCallback(() => {

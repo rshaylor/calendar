@@ -27,7 +27,7 @@ CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 REDIRECT_URI = os.environ.get(
     "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/calendar/callback"
 )
-SYNC_INTERVAL_SECONDS = int(os.environ.get("CALENDAR_SYNC_SECONDS", "600"))
+SYNC_INTERVAL_SECONDS = int(os.environ.get("CALENDAR_SYNC_SECONDS", "1800"))
 SYNC_DAYS_AHEAD = int(os.environ.get("CALENDAR_DAYS_AHEAD", "35"))
 SYNC_DAYS_BACK = int(os.environ.get("CALENDAR_DAYS_BACK", "7"))
 

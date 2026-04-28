@@ -62,7 +62,7 @@ export default function TodayTab({
       }
     }
     load();
-    const t = setInterval(load, 5 * 60_000);
+    const t = setInterval(load, 30 * 60_000);
     return () => {
       cancelled = true;
       clearInterval(t);
