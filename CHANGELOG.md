@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Disable AppArmor profile — the 0.2.0 profile blocked s6-overlay's `/init` from re-executing, preventing the add-on from restarting cleanly. Will revisit with a properly tested profile.
+
 ## 0.2.0
 
 - AppArmor profile added — narrows what the container can do.

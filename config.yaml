@@ -1,5 +1,5 @@
 name: Family Hub
-version: "0.2.0"
+version: "0.2.1"
 slug: family_hub
 description: A Skylight-style family hub — shared calendar, chores with star rewards, and lists, on a kitchen touchscreen and family phones.
 url: https://github.com/rshaylor/calendar
@@ -29,8 +29,10 @@ ports_description:
   "8000/tcp": Google Calendar OAuth callback
 
 # Persistent SQLite at /data/app.db survives restarts and updates.
-# AppArmor profile narrows what the container can do.
-apparmor: true
+# AppArmor profile is currently disabled — the previous profile blocked
+# s6-overlay's /init from re-executing on restart. Revisit once we have
+# a profile that's been tested through a full stop/start cycle.
+apparmor: false
 
 # Add-on configuration form rendered in the HA UI.
 options:
