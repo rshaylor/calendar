@@ -1,0 +1,90 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from .. import models, schemas
+from ..db import get_db
+
+router = APIRouter(tags=["rewards"])
+
+
+def _balance(db: Session, member_id: int) -> int:
+    earned = (
+        db.query(func.coalesce(func.sum(models.ChoreCompletion.stars_awarded), 0))
+        .filter(models.ChoreCompletion.member_id == member_id)
+        .scalar()
+    )
+    spent = (
+        db.query(func.coalesce(func.sum(models.Redemption.star_cost), 0))
+        .filter(models.Redemption.member_id == member_id)
+        .scalar()
+    )
+    return int(earned) - int(spent)
+
+
+@router.get("/balances", response_model=list[schemas.Balance])
+def list_balances(db: Session = Depends(get_db)):
+    members = db.query(models.FamilyMember).order_by(models.FamilyMember.id).all()
+    return [{"member_id": m.id, "stars": _balance(db, m.id)} for m in members]
+
+
+@router.get("/rewards", response_model=list[schemas.RewardRead])
+def list_rewards(db: Session = Depends(get_db)):
+    return db.query(models.Reward).order_by(models.Reward.star_cost, models.Reward.id).all()
+
+
+@router.post("/rewards", response_model=schemas.RewardRead, status_code=201)
+def create_reward(payload: schemas.RewardCreate, db: Session = Depends(get_db)):
+    reward = models.Reward(**payload.model_dump())
+    db.add(reward)
+    db.commit()
+    db.refresh(reward)
+    return reward
+
+
+@router.delete("/rewards/{reward_id}", status_code=204)
+def delete_reward(reward_id: int, db: Session = Depends(get_db)):
+    reward = db.get(models.Reward, reward_id)
+    if not reward:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(reward)
+    db.commit()
+
+
+@router.post("/rewards/{reward_id}/redeem", response_model=schemas.RedemptionRead, status_code=201)
+def redeem_reward(reward_id: int, payload: schemas.RedeemCreate, db: Session = Depends(get_db)):
+    reward = db.get(models.Reward, reward_id)
+    if not reward:
+        raise HTTPException(status_code=404, detail="Reward not found")
+    member = db.get(models.FamilyMember, payload.member_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    balance = _balance(db, member.id)
+    if balance < reward.star_cost:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not enough stars: have {balance}, need {reward.star_cost}",
+        )
+
+    redemption = models.Redemption(
+        reward_id=reward.id,
+        member_id=member.id,
+        star_cost=reward.star_cost,
+        reward_name=reward.name,
+        reward_emoji=reward.emoji,
+    )
+    db.add(redemption)
+    db.commit()
+    db.refresh(redemption)
+    return redemption
+
+
+@router.get("/redemptions", response_model=list[schemas.RedemptionRead])
+def list_redemptions(db: Session = Depends(get_db)):
+    return (
+        db.query(models.Redemption)
+        .order_by(models.Redemption.redeemed_at.desc())
+        .limit(50)
+        .all()
+    )

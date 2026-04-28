@@ -1,0 +1,108 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy.orm import relationship
+
+from .db import Base
+
+
+chore_assignees = Table(
+    "chore_assignees",
+    Base.metadata,
+    Column("chore_id", ForeignKey("chores.id", ondelete="CASCADE"), primary_key=True),
+    Column("member_id", ForeignKey("family_members.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    color = Column(String, nullable=False, default="#888888")
+    avatar_emoji = Column(String, nullable=False, default="🙂")
+    is_kid = Column(Boolean, nullable=False, default=False)
+
+
+class Chore(Base):
+    __tablename__ = "chores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    emoji = Column(String, nullable=False, default="✅")
+    star_value = Column(Integer, nullable=False, default=0)
+    # "none" = one-shot, "daily", "weekly"
+    recurrence = Column(String, nullable=False, default="none")
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    assignees = relationship("FamilyMember", secondary=chore_assignees, lazy="joined")
+
+
+class ChoreCompletion(Base):
+    __tablename__ = "chore_completions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chore_id = Column(Integer, ForeignKey("chores.id", ondelete="CASCADE"), nullable=False, index=True)
+    member_id = Column(Integer, ForeignKey("family_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    completed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    stars_awarded = Column(Integer, nullable=False, default=0)
+
+
+class Reward(Base):
+    __tablename__ = "rewards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    emoji = Column(String, nullable=False, default="🎁")
+    star_cost = Column(Integer, nullable=False, default=1)
+
+
+class Redemption(Base):
+    __tablename__ = "redemptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reward_id = Column(Integer, ForeignKey("rewards.id", ondelete="CASCADE"), nullable=False, index=True)
+    member_id = Column(Integer, ForeignKey("family_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    star_cost = Column(Integer, nullable=False)
+    reward_name = Column(String, nullable=False)
+    reward_emoji = Column(String, nullable=False)
+    redeemed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class GoogleAccount(Base):
+    __tablename__ = "google_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False, unique=True)
+    refresh_token = Column(String, nullable=False)
+    connected_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_synced_at = Column(DateTime, nullable=True)
+
+
+class CalendarSubscription(Base):
+    __tablename__ = "calendar_subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("google_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    google_calendar_id = Column(String, nullable=False)
+    summary = Column(String, nullable=False, default="")
+    background_color = Column(String, nullable=True)
+    is_primary = Column(Boolean, nullable=False, default=False)
+    enabled = Column(Boolean, nullable=False, default=False)
+    member_id = Column(Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True)
+
+
+class CalendarEvent(Base):
+    __tablename__ = "calendar_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("google_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    google_event_id = Column(String, nullable=False, index=True)
+    calendar_id = Column(String, nullable=False)
+    color = Column(String, nullable=True)
+    member_id = Column(Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True)
+    summary = Column(String, nullable=False, default="")
+    location = Column(String, nullable=True)
+    start_at = Column(DateTime, nullable=False, index=True)
+    end_at = Column(DateTime, nullable=False)
+    all_day = Column(Boolean, nullable=False, default=False)
