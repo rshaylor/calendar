@@ -210,7 +210,7 @@ function TodayView({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(420px,1fr))]">
       {memberCards.map(({ member: m, chores: mine }) => {
         const done = mine.filter((c) => c.done_today_by.includes(m.id)).length;
         const total = mine.length;
