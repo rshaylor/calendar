@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type Balance, type Chore, type FamilyMember, type Reward } from "./api";
+import TodayTab from "./TodayTab";
 import ChoresTab from "./ChoresTab";
 import RewardsTab from "./RewardsTab";
 import CalendarTab from "./CalendarTab";
@@ -10,9 +11,10 @@ import WeatherPill from "./WeatherPill";
 import Icon from "./Icon";
 import { useIdleTimer } from "./hooks";
 
-type Tab = "calendar" | "chores" | "rewards" | "lists" | "settings";
+type Tab = "today" | "calendar" | "chores" | "rewards" | "lists" | "settings";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "today", label: "Today", icon: "home" },
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "chores", label: "Chores", icon: "checkSquare" },
   { id: "rewards", label: "Rewards", icon: "star" },
@@ -26,6 +28,7 @@ function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
   const t = params.get("tab");
   if (
+    t === "today" ||
     t === "calendar" ||
     t === "chores" ||
     t === "rewards" ||
@@ -33,7 +36,7 @@ function initialTab(): Tab {
     t === "settings"
   )
     return t;
-  return "calendar";
+  return "today";
 }
 
 export default function App() {
@@ -77,11 +80,12 @@ export default function App() {
   }, [refresh]);
 
   const onIdle = useCallback(() => {
-    setTab("calendar");
+    setTab("today");
   }, []);
   useIdleTimer(IDLE_RETURN_MS, onIdle);
 
   const titleOf: Record<Tab, string> = {
+    today: "Today",
     calendar: "Calendar",
     chores: "Chores",
     rewards: "Rewards",
@@ -188,6 +192,14 @@ export default function App() {
           {error && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-danger/10 text-danger">{error}</div>
           )}
+          {tab === "today" && (
+            <TodayTab
+              members={members}
+              chores={chores}
+              balances={balances}
+              onChanged={refresh}
+            />
+          )}
           {tab === "calendar" && (
             <CalendarTab
               members={members}
@@ -223,7 +235,12 @@ export default function App() {
         </div>
       </main>
 
-      <SleepOverlay active={sleep.active} onWake={sleep.wake} schedule={sleep.schedule} />
+      <SleepOverlay
+        active={sleep.active}
+        onWake={sleep.wake}
+        schedule={sleep.schedule}
+        members={members}
+      />
     </div>
   );
 }
