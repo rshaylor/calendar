@@ -1,0 +1,61 @@
+#include <tunables/global>
+
+profile family_hub flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities we need
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability fsetid,
+  capability setgid,
+  capability setuid,
+  capability sys_chroot,
+  capability kill,
+
+  # Networking (HTTP server + outbound to Google APIs / Open-Meteo)
+  network,
+
+  # Signals between processes
+  signal,
+
+  # S6-overlay init system used by the HA base image
+  pivot_root,
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /usr/local/bin/** ix,
+  /usr/lib/** ix,
+  /usr/local/lib/** ix,
+  /run/{,**} rwk,
+  /package/** ix,
+  /command/** ix,
+
+  # bashio (reads /data/options.json into env vars)
+  /usr/lib/bashio/** ix,
+
+  # Add-on persistent data — SQLite database lives here.
+  /data/** rwk,
+
+  # Our application
+  /app/** rwix,
+
+  # Filesystem scratch space
+  /etc/** rwk,
+  /var/** rwk,
+  /tmp/** rwk,
+
+  # Standard reads
+  / r,
+  /proc/** r,
+  /sys/** r,
+
+  # Things we explicitly never need — block defensively.
+  deny capability mac_admin,
+  deny capability mac_override,
+  deny capability sys_module,
+  deny capability sys_rawio,
+  deny capability sys_ptrace,
+  deny capability sys_admin,
+  deny capability sys_boot,
+}

@@ -1,29 +1,36 @@
 name: Family Hub
-version: "0.1.0"
+version: "0.2.0"
 slug: family_hub
-description: Calendar, chores, rewards, and lists for the family on a kitchen touchscreen.
+description: A Skylight-style family hub — shared calendar, chores with star rewards, and lists, on a kitchen touchscreen and family phones.
 url: https://github.com/rshaylor/calendar
 arch:
   - aarch64
   - amd64
 
-# Persistent SQLite database lives in /data, automatically mounted by HA.
-# Web UI is served on port 8000 inside the container.
+# A long-running web service.
 init: false
+startup: application
+boot: auto
 
-# Expose the UI under HA's sidebar via Ingress (auth-protected).
+# Expose the UI through HA's Ingress (auth-protected by HA).
 ingress: true
 ingress_port: 8000
 panel_icon: mdi:home-heart
 panel_title: Family Hub
+# Anyone in the household with HA access can use it (not admin-only).
+panel_admin: false
 
 # Direct host port for the Google OAuth callback URL (must be a stable
-# URL so Google can redirect to it). Family members reach the app via
-# Ingress; only the OAuth handshake uses this port.
+# URL Google can redirect to). Family members reach the app via Ingress;
+# only the OAuth handshake uses this port.
 ports:
   "8000/tcp": 8000
 ports_description:
-  "8000/tcp": OAuth callback for Google Calendar (also direct UI access)
+  "8000/tcp": Google Calendar OAuth callback
+
+# Persistent SQLite at /data/app.db survives restarts and updates.
+# AppArmor profile narrows what the container can do.
+apparmor: true
 
 # Add-on configuration form rendered in the HA UI.
 options:
@@ -41,6 +48,7 @@ schema:
   location_lon: str?
   calendar_sync_seconds: int(60,)
 
-boot: auto
+# We don't need any HA APIs at runtime.
 hassio_api: false
+homeassistant_api: false
 host_network: false
