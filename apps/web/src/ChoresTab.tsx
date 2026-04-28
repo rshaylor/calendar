@@ -1,15 +1,24 @@
 import { useMemo, useState } from "react";
-import { api, type Chore, type FamilyMember, type Recurrence } from "./api";
+import {
+  api,
+  type Balance,
+  type Chore,
+  type FamilyMember,
+  type Recurrence,
+  type TimeOfDay,
+} from "./api";
 import Celebration from "./Celebration";
 import { PRESET_CHORE_EMOJIS, tint } from "./ui";
 
 type Props = {
   members: FamilyMember[];
   chores: Chore[];
+  balances: Balance[];
   onChanged: () => void;
 };
 
-// JS-style weekday order: 0=Sun, 1=Mon, ..., 6=Sat. UI starts on Monday.
+type ViewMode = "today" | "manage";
+
 const WEEKDAY_UI: { value: number; short: string }[] = [
   { value: 1, short: "Mon" },
   { value: 2, short: "Tue" },
@@ -19,7 +28,6 @@ const WEEKDAY_UI: { value: number; short: string }[] = [
   { value: 6, short: "Sat" },
   { value: 0, short: "Sun" },
 ];
-
 const WEEKDAY_FULL: Record<number, string> = {
   0: "Sun",
   1: "Mon",
@@ -30,15 +38,29 @@ const WEEKDAY_FULL: Record<number, string> = {
   6: "Sat",
 };
 
+const SECTIONS: { key: TimeOfDay | "any"; label: string; emoji: string }[] = [
+  { key: "morning", label: "Morning", emoji: "☀️" },
+  { key: "afternoon", label: "Afternoon", emoji: "🌤️" },
+  { key: "evening", label: "Evening", emoji: "🌙" },
+  { key: "any", label: "Chores", emoji: "🧹" },
+];
+
+function isActiveToday(c: Chore, dow: number): boolean {
+  if (c.recurrence === "none" || c.recurrence === "daily") return true;
+  if (c.recurrence === "weekdays") return (c.weekdays ?? []).includes(dow);
+  return true;
+}
+
+function arraysEqual(a: number[], b: number[]) {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 function describeRecurrence(c: Chore): string {
   if (c.recurrence === "none") return "One-off";
   if (c.recurrence === "daily") return "Every day";
   if (c.recurrence === "weekdays" && c.weekdays && c.weekdays.length > 0) {
-    const sorted = [...c.weekdays].sort((a, b) => {
-      // Mon..Sun ordering
-      const order = [1, 2, 3, 4, 5, 6, 0];
-      return order.indexOf(a) - order.indexOf(b);
-    });
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    const sorted = [...c.weekdays].sort((a, b) => order.indexOf(a) - order.indexOf(b));
     if (arraysEqual(sorted, [1, 2, 3, 4, 5])) return "Weekdays";
     if (arraysEqual(sorted, [6, 0])) return "Weekends";
     if (sorted.length === 7) return "Every day";
@@ -47,27 +69,14 @@ function describeRecurrence(c: Chore): string {
   return "Custom";
 }
 
-function arraysEqual(a: number[], b: number[]) {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
-}
-
-function isActiveToday(c: Chore, todayDow: number): boolean {
-  if (c.recurrence === "none" || c.recurrence === "daily") return true;
-  if (c.recurrence === "weekdays") return (c.weekdays ?? []).includes(todayDow);
-  return true;
-}
-
-export default function ChoresTab({ members, chores, onChanged }: Props) {
+export default function ChoresTab({ members, chores, balances, onChanged }: Props) {
+  const [view, setView] = useState<ViewMode>("today");
+  const [hideCompleted, setHideCompleted] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [todayOnly, setTodayOnly] = useState(true);
   const [celebration, setCelebration] = useState({ trigger: 0, message: "" });
 
   const todayDow = new Date().getDay();
-
-  const visibleChores = useMemo(() => {
-    if (!todayOnly) return chores;
-    return chores.filter((c) => isActiveToday(c, todayDow));
-  }, [chores, todayOnly, todayDow]);
+  const balanceFor = (id: number) => balances.find((b) => b.member_id === id)?.stars ?? 0;
 
   function memberFinishedAll(memberId: number, after: Chore[]): boolean {
     const todays = after.filter((c) => isActiveToday(c, todayDow));
@@ -78,7 +87,6 @@ export default function ChoresTab({ members, chores, onChanged }: Props) {
 
   async function toggleDone(chore: Chore, memberId: number) {
     const wasDone = chore.done_today_by.includes(memberId);
-
     if (wasDone) {
       await api.uncompleteChore(chore.id, memberId);
     } else {
@@ -94,12 +102,6 @@ export default function ChoresTab({ members, chores, onChanged }: Props) {
     onChanged();
   }
 
-  async function remove(id: number) {
-    if (!confirm("Delete this chore?")) return;
-    await api.deleteChore(id);
-    onChanged();
-  }
-
   if (members.length === 0) {
     return (
       <div className="rounded-3xl bg-surface border border-line p-8 text-center text-ink-2">
@@ -112,36 +114,250 @@ export default function ChoresTab({ members, chores, onChanged }: Props) {
     <div>
       <Celebration trigger={celebration.trigger} message={celebration.message} />
 
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
         <div className="inline-flex p-1 rounded-full bg-surface-2 border border-line">
-          {(["today", "all"] as const).map((mode) => {
-            const active = mode === (todayOnly ? "today" : "all");
+          {(["today", "manage"] as const).map((v) => {
+            const active = view === v;
             return (
               <button
-                key={mode}
-                onClick={() => setTodayOnly(mode === "today")}
+                key={v}
+                onClick={() => setView(v)}
                 className={
                   "px-5 py-2 rounded-full text-sm font-medium transition " +
                   (active ? "bg-white text-ink shadow-sm" : "text-ink-2")
                 }
               >
-                {mode === "today" ? "Today" : "All"}
+                {v === "today" ? "Today" : "Manage"}
               </button>
             );
           })}
         </div>
+        {view === "today" && (
+          <button
+            onClick={() => setHideCompleted((v) => !v)}
+            className={
+              "px-4 py-2 rounded-full text-sm font-medium transition border " +
+              (hideCompleted
+                ? "bg-primary text-white border-primary shadow-sm"
+                : "bg-surface text-ink-2 border-line hover:bg-surface-2")
+            }
+          >
+            {hideCompleted ? "✓ Hide completed" : "Hide completed"}
+          </button>
+        )}
         <span className="ml-auto text-sm text-muted">
-          {visibleChores.length} chore{visibleChores.length === 1 ? "" : "s"}
+          {chores.length} chore{chores.length === 1 ? "" : "s"}
         </span>
       </div>
 
-      {visibleChores.length === 0 ? (
+      {view === "today" ? (
+        <TodayView
+          members={members}
+          chores={chores}
+          todayDow={todayDow}
+          hideCompleted={hideCompleted}
+          balanceFor={balanceFor}
+          onToggleDone={toggleDone}
+        />
+      ) : (
+        <ManageView
+          members={members}
+          chores={chores}
+          onChanged={onChanged}
+          showForm={showForm}
+          setShowForm={setShowForm}
+        />
+      )}
+    </div>
+  );
+}
+
+function TodayView({
+  members,
+  chores,
+  todayDow,
+  hideCompleted,
+  balanceFor,
+  onToggleDone,
+}: {
+  members: FamilyMember[];
+  chores: Chore[];
+  todayDow: number;
+  hideCompleted: boolean;
+  balanceFor: (id: number) => number;
+  onToggleDone: (c: Chore, memberId: number) => void;
+}) {
+  const todays = useMemo(
+    () => chores.filter((c) => isActiveToday(c, todayDow)),
+    [chores, todayDow],
+  );
+
+  const memberCards = useMemo(() => {
+    return members
+      .map((m) => {
+        const mine = todays.filter((c) => c.assignees.some((a) => a.id === m.id));
+        return { member: m, chores: mine };
+      })
+      .filter((x) => x.chores.length > 0);
+  }, [members, todays]);
+
+  if (memberCards.length === 0) {
+    return (
+      <div className="rounded-3xl bg-surface border border-line p-8 text-center text-ink-2">
+        No chores assigned for today. Switch to <strong>Manage</strong> to add some.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+      {memberCards.map(({ member: m, chores: mine }) => {
+        const done = mine.filter((c) => c.done_today_by.includes(m.id)).length;
+        const total = mine.length;
+        const allDone = total > 0 && done === total;
+        return (
+          <article
+            key={m.id}
+            className="rounded-3xl border border-line shadow-sm p-4 bg-surface"
+          >
+            <header
+              className="flex items-center gap-3 px-2 py-2 rounded-2xl mb-3"
+              style={{ background: tint(m.color, 0.18) }}
+            >
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-white shadow-sm">
+                {m.avatar_emoji}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-lg leading-tight">{m.name}</div>
+                <div className="flex items-center gap-3 text-sm text-ink-2">
+                  <span className="tabular-nums">
+                    ✓ {done}/{total}
+                  </span>
+                  {m.is_kid && (
+                    <span className="tabular-nums text-star font-semibold">
+                      ⭐ {balanceFor(m.id)}
+                    </span>
+                  )}
+                  {allDone && <span>✨</span>}
+                </div>
+              </div>
+            </header>
+
+            <div className="space-y-3">
+              {SECTIONS.map((s) => {
+                const sectionChores = mine.filter((c) =>
+                  s.key === "any" ? c.time_of_day == null : c.time_of_day === s.key,
+                );
+                const visible = hideCompleted
+                  ? sectionChores.filter((c) => !c.done_today_by.includes(m.id))
+                  : sectionChores;
+                if (sectionChores.length === 0) return null;
+                if (visible.length === 0) return null;
+                return (
+                  <section key={s.key}>
+                    <h3 className="text-sm font-semibold text-ink-2 px-1 mb-1.5 flex items-center gap-1.5">
+                      <span>{s.emoji}</span>
+                      <span>{s.label}</span>
+                    </h3>
+                    <ul className="space-y-1.5">
+                      {visible.map((c) => (
+                        <TaskCard
+                          key={c.id}
+                          chore={c}
+                          member={m}
+                          done={c.done_today_by.includes(m.id)}
+                          onToggle={() => onToggleDone(c, m.id)}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function TaskCard({
+  chore,
+  member,
+  done,
+  onToggle,
+}: {
+  chore: Chore;
+  member: FamilyMember;
+  done: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li>
+      <button
+        onClick={onToggle}
+        className={
+          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition active:scale-[0.99] text-left " +
+          (done ? "opacity-60" : "")
+        }
+        style={{ background: tint(member.color, done ? 0.1 : 0.18) }}
+      >
+        <span className="text-2xl shrink-0">{chore.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <div
+            className={
+              "font-medium leading-tight truncate " + (done ? "line-through" : "")
+            }
+          >
+            {chore.name}
+          </div>
+          {chore.star_value > 0 && (
+            <div className="text-xs text-ink-2">⭐ {chore.star_value}</div>
+          )}
+        </div>
+        <span
+          className={
+            "w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition " +
+            (done
+              ? "bg-success border-success text-white"
+              : "border-white/70 bg-white/40")
+          }
+        >
+          {done && <span className="text-sm">✓</span>}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function ManageView({
+  members,
+  chores,
+  onChanged,
+  showForm,
+  setShowForm,
+}: {
+  members: FamilyMember[];
+  chores: Chore[];
+  onChanged: () => void;
+  showForm: boolean;
+  setShowForm: (v: boolean) => void;
+}) {
+  async function remove(id: number) {
+    if (!confirm("Delete this chore?")) return;
+    await api.deleteChore(id);
+    onChanged();
+  }
+
+  return (
+    <div>
+      {chores.length === 0 ? (
         <div className="rounded-3xl bg-surface border border-line p-8 text-center text-ink-2">
-          {todayOnly ? "No chores for today." : "No chores yet."}
+          No chores yet.
         </div>
       ) : (
         <ul className="grid gap-3">
-          {visibleChores.map((c) => (
+          {chores.map((c) => (
             <li
               key={c.id}
               className="rounded-3xl bg-surface border border-line p-5 shadow-sm"
@@ -154,6 +370,12 @@ export default function ChoresTab({ members, chores, onChanged }: Props) {
                   <div className="font-semibold text-lg truncate">{c.name}</div>
                   <div className="text-sm text-ink-2 flex items-center gap-2 flex-wrap">
                     <span>{describeRecurrence(c)}</span>
+                    {c.time_of_day && (
+                      <>
+                        <span>·</span>
+                        <span className="capitalize">{c.time_of_day}</span>
+                      </>
+                    )}
                     {c.star_value > 0 && (
                       <>
                         <span>·</span>
@@ -170,27 +392,17 @@ export default function ChoresTab({ members, chores, onChanged }: Props) {
                 </button>
               </div>
               {c.assignees.length > 0 && (
-                <div className="mt-4 flex gap-2 flex-wrap">
-                  {c.assignees.map((a) => {
-                    const done = c.done_today_by.includes(a.id);
-                    return (
-                      <button
-                        key={a.id}
-                        onClick={() => toggleDone(c, a.id)}
-                        className={
-                          "flex items-center gap-2 px-4 py-2.5 rounded-full text-base font-medium transition active:scale-95 " +
-                          (done ? "text-white shadow-sm" : "text-ink hover:opacity-80")
-                        }
-                        style={{
-                          background: done ? a.color : tint(a.color, 0.22),
-                        }}
-                      >
-                        <span className="text-lg">{a.avatar_emoji}</span>
-                        <span>{a.name}</span>
-                        {done && <span>✓</span>}
-                      </button>
-                    );
-                  })}
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {c.assignees.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs"
+                      style={{ background: tint(a.color, 0.2) }}
+                    >
+                      <span>{a.avatar_emoji}</span>
+                      <span>{a.name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </li>
@@ -236,7 +448,8 @@ function ChoreForm({
   const [emoji, setEmoji] = useState(PRESET_CHORE_EMOJIS[0]);
   const [stars, setStars] = useState(1);
   const [repeat, setRepeat] = useState<RepeatChoice>("daily");
-  const [customDays, setCustomDays] = useState<number[]>([1, 3, 5]); // Mon/Wed/Fri default
+  const [customDays, setCustomDays] = useState<number[]>([1, 3, 5]);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | "">("");
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
 
   function toggleAssignee(id: number) {
@@ -271,6 +484,7 @@ function ChoreForm({
       star_value: stars,
       recurrence,
       weekdays,
+      time_of_day: (timeOfDay || null) as TimeOfDay | null,
       assignee_ids: assigneeIds,
     });
     onSaved();
@@ -282,6 +496,13 @@ function ChoreForm({
     { value: "weekends", label: "Weekends", hint: "Sat–Sun" },
     { value: "custom", label: "Custom days", hint: "pick days" },
     { value: "none", label: "One-off", hint: "no repeat" },
+  ];
+
+  const TOD_OPTIONS: { value: TimeOfDay | ""; label: string; emoji: string }[] = [
+    { value: "", label: "Anytime", emoji: "🧹" },
+    { value: "morning", label: "Morning", emoji: "☀️" },
+    { value: "afternoon", label: "Afternoon", emoji: "🌤️" },
+    { value: "evening", label: "Evening", emoji: "🌙" },
   ];
 
   return (
@@ -317,6 +538,31 @@ function ChoreForm({
       </div>
 
       <div>
+        <div className="text-sm text-ink-2 mb-2">Time of day</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {TOD_OPTIONS.map((opt) => {
+            const active = timeOfDay === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setTimeOfDay(opt.value)}
+                className={
+                  "rounded-2xl px-3 py-2.5 transition border text-center " +
+                  (active
+                    ? "bg-primary text-white border-primary shadow-sm"
+                    : "bg-surface border-line hover:bg-surface-2")
+                }
+              >
+                <div className="text-xl">{opt.emoji}</div>
+                <div className="text-xs font-medium">{opt.label}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
         <div className="text-sm text-ink-2 mb-2">Repeat</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {REPEAT_OPTIONS.map((opt) => {
@@ -334,11 +580,7 @@ function ChoreForm({
                 }
               >
                 <div className="font-medium text-sm">{opt.label}</div>
-                <div
-                  className={
-                    "text-xs " + (active ? "text-white/75" : "text-muted")
-                  }
-                >
+                <div className={"text-xs " + (active ? "text-white/75" : "text-muted")}>
                   {opt.hint}
                 </div>
               </button>

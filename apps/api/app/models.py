@@ -36,6 +36,8 @@ class Chore(Base):
     # Active days of week when recurrence == "weekdays".
     # Stored as a JSON array of ints, JS-style: 0=Sun..6=Sat
     weekdays = Column(JSON, nullable=True)
+    # Optional time-of-day grouping: "morning" / "afternoon" / "evening" / null
+    time_of_day = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     assignees = relationship("FamilyMember", secondary=chore_assignees, lazy="joined")

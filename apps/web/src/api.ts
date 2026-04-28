@@ -13,6 +13,8 @@ export type Recurrence = "none" | "daily" | "weekdays";
 // JS-style: 0=Sun, 1=Mon, ..., 6=Sat
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+export type TimeOfDay = "morning" | "afternoon" | "evening";
+
 export type Chore = {
   id: number;
   name: string;
@@ -20,6 +22,7 @@ export type Chore = {
   star_value: number;
   recurrence: Recurrence;
   weekdays: number[] | null;
+  time_of_day: TimeOfDay | null;
   assignees: FamilyMember[];
   done_today_by: number[];
 };
@@ -30,6 +33,7 @@ export type ChoreInput = {
   star_value: number;
   recurrence: Recurrence;
   weekdays: number[] | null;
+  time_of_day: TimeOfDay | null;
   assignee_ids: number[];
 };
 

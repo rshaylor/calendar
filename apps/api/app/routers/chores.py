@@ -31,6 +31,7 @@ def _serialize(chore: models.Chore, db: Session) -> dict:
         "star_value": chore.star_value,
         "recurrence": chore.recurrence,
         "weekdays": chore.weekdays,
+        "time_of_day": chore.time_of_day,
         "assignees": chore.assignees,
         "done_today_by": [row[0] for row in done_today],
     }

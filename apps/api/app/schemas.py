@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Recurrence = Literal["none", "daily", "weekdays"]
+TimeOfDay = Literal["morning", "afternoon", "evening"]
 
 
 class FamilyMemberBase(BaseModel):
@@ -29,6 +30,8 @@ class ChoreBase(BaseModel):
     recurrence: Recurrence = "none"
     # 0=Sun..6=Sat. Only meaningful when recurrence == "weekdays".
     weekdays: list[int] | None = None
+    # Routine grouping; null means a generic "Chore" (no specific time).
+    time_of_day: TimeOfDay | None = None
 
 
 class ChoreCreate(ChoreBase):

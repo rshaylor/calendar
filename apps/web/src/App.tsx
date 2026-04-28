@@ -165,7 +165,14 @@ export default function App() {
               onGoToSettings={() => setTab("settings")}
             />
           )}
-          {tab === "chores" && <ChoresTab members={members} chores={chores} onChanged={refresh} />}
+          {tab === "chores" && (
+            <ChoresTab
+              members={members}
+              chores={chores}
+              balances={balances}
+              onChanged={refresh}
+            />
+          )}
           {tab === "rewards" && (
             <RewardsTab
               members={members}
