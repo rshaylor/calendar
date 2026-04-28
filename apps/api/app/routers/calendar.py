@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 from datetime import date, datetime, time, timedelta, timezone
 
@@ -27,7 +29,20 @@ def _google_error_detail(exc: Exception, action: str) -> str:
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
-WEB_ORIGIN = "http://localhost:5173"
+WEB_ORIGIN_FALLBACK = "http://localhost:5173"
+
+
+def _encode_state(payload: dict) -> str:
+    return base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+
+
+def _decode_state(state: str | None) -> dict:
+    if not state:
+        return {}
+    try:
+        return json.loads(base64.urlsafe_b64decode(state.encode()).decode())
+    except Exception:
+        return {}
 
 
 @router.get("/status")
@@ -48,37 +63,50 @@ def status(db: Session = Depends(get_db)):
 
 
 @router.get("/auth-url", response_model=schemas.AuthUrl)
-def auth_url():
+def auth_url(return_to: str | None = Query(default=None)):
     if not gcal.is_configured():
         raise HTTPException(
             status_code=400,
             detail="Google credentials not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
         )
     flow = gcal.make_flow()
+    state = _encode_state({"return_to": return_to or ""})
     url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         prompt="consent",
+        state=state,
     )
     return {"url": url}
 
 
+def _redirect_to(return_to: str | None, params: dict[str, str]) -> RedirectResponse:
+    target = return_to or f"{WEB_ORIGIN_FALLBACK}/"
+    sep = "&" if "?" in target else "?"
+    qs = "&".join(f"{k}={v}" for k, v in params.items())
+    return RedirectResponse(f"{target}{sep}{qs}", status_code=302)
+
+
 @router.get("/callback")
-def callback(code: str = Query(...), db: Session = Depends(get_db)):
+def callback(
+    code: str = Query(...),
+    state: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
     if not gcal.is_configured():
         raise HTTPException(status_code=400, detail="Google credentials not configured.")
+
+    return_to = _decode_state(state).get("return_to") or None
 
     flow = gcal.make_flow()
     flow.fetch_token(code=code)
     creds = flow.credentials
     if not creds.refresh_token:
-        return RedirectResponse(
-            f"{WEB_ORIGIN}/?calendar_error=no_refresh_token", status_code=302
-        )
+        return _redirect_to(return_to, {"calendar_error": "no_refresh_token"})
 
     email = gcal.fetch_userinfo_email(creds)
     if not email:
-        return RedirectResponse(f"{WEB_ORIGIN}/?calendar_error=no_email", status_code=302)
+        return _redirect_to(return_to, {"calendar_error": "no_email"})
 
     existing = db.query(models.GoogleAccount).filter_by(email=email).first()
     if existing:
@@ -97,7 +125,7 @@ def callback(code: str = Query(...), db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    return RedirectResponse(f"{WEB_ORIGIN}/?tab=calendar&connected=1", status_code=302)
+    return _redirect_to(return_to, {"tab": "calendar", "connected": "1"})
 
 
 @router.delete("/accounts/{account_id}", status_code=204)

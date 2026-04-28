@@ -108,8 +108,17 @@ export type CalendarSubscription = {
   member_id: number | null;
 };
 
+// Resolve the API base relative to the current document. This makes the
+// app work at root (dev / Pi prod) AND under HA's dynamic ingress sub-path
+// (where the page lives at /api/hassio_ingress/<token>/...).
+function apiBase(): string {
+  const base = document.baseURI || window.location.href;
+  return new URL("api/", base).toString();
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const url = apiBase() + path.replace(/^\//, "");
+  const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -175,7 +184,10 @@ export const api = {
     request<HistoryEntry[]>(`/balances/${memberId}/history?limit=${limit}`),
 
   calendarStatus: () => request<CalendarStatus>("/calendar/status"),
-  calendarAuthUrl: () => request<{ url: string }>("/calendar/auth-url"),
+  calendarAuthUrl: () => {
+    const returnTo = encodeURIComponent(window.location.href);
+    return request<{ url: string }>(`/calendar/auth-url?return_to=${returnTo}`);
+  },
   calendarEvents: (params: { days?: number; from?: string; to?: string } = {}) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from_date", params.from);
