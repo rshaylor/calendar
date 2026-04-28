@@ -187,6 +187,7 @@ export default function WeekView({
         dayList={dayList}
         eventsByDay={eventsByDay}
         memberById={memberById}
+        onEventClick={onEventClick}
       />
 
       {/* Time grid */}
@@ -318,11 +319,13 @@ function AllDayStrip({
   dayList,
   eventsByDay,
   memberById,
+  onEventClick,
 }: {
   days: number;
   dayList: Date[];
   eventsByDay: Map<string, CalendarEvent[]>;
   memberById: Map<number, FamilyMember>;
+  onEventClick?: (event: CalendarEvent) => void;
 }) {
   const anyAllDay = dayList.some((d) =>
     (eventsByDay.get(d.toISOString()) ?? []).some((e) => e.all_day),
@@ -345,9 +348,13 @@ function AllDayStrip({
               const member = ev.member_id ? memberById.get(ev.member_id) : null;
               const color = member?.color ?? ev.color ?? "#86b9f7";
               return (
-                <div
+                <button
                   key={ev.id}
-                  className="rounded-lg px-2 py-1 text-xs truncate font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEventClick?.(ev);
+                  }}
+                  className="w-full rounded-lg px-2 py-1 text-xs truncate font-medium text-left hover:shadow-sm transition-shadow"
                   style={{
                     background: tint(color, 0.28),
                     borderLeft: `3px solid ${color}`,
@@ -355,7 +362,7 @@ function AllDayStrip({
                   title={ev.summary}
                 >
                   {ev.summary}
-                </div>
+                </button>
               );
             })}
           </div>

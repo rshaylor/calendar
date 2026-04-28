@@ -84,6 +84,14 @@ class StarAdjustment(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
+class Setting(Base):
+    """Generic key/value app settings (e.g. weather location)."""
+    __tablename__ = "settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=True)
+
+
 class GoogleAccount(Base):
     __tablename__ = "google_accounts"
 

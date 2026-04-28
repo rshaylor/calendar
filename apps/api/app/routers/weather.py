@@ -5,13 +5,49 @@ import time
 import urllib.request
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from .. import models
+from ..db import SessionLocal, get_db
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 
 log = logging.getLogger("weather")
 _cache: dict[str, Any] = {"at": 0.0, "data": None}
 _TTL_SECONDS = 600  # 10 min
+
+LOCATION_KEY = "weather.location"
+
+
+class WeatherLocation(BaseModel):
+    lat: float | None = None
+    lon: float | None = None
+
+
+def _read_location_from_db(db: Session) -> tuple[str, str]:
+    s = db.get(models.Setting, LOCATION_KEY)
+    if s and s.value:
+        try:
+            data = json.loads(s.value)
+            lat = data.get("lat")
+            lon = data.get("lon")
+            if lat is not None and lon is not None:
+                return str(lat), str(lon)
+        except Exception:
+            pass
+    return "", ""
+
+
+def _resolve_location(db: Session) -> tuple[str, str]:
+    lat, lon = _read_location_from_db(db)
+    if lat and lon:
+        return lat, lon
+    return (
+        os.environ.get("LOCATION_LAT", "").strip(),
+        os.environ.get("LOCATION_LON", "").strip(),
+    )
 
 
 def _wmo_to_icon(code: int) -> str:
@@ -69,8 +105,12 @@ def _wmo_to_label(code: int) -> str:
 
 @router.get("")
 def get_weather():
-    lat = os.environ.get("LOCATION_LAT", "").strip()
-    lon = os.environ.get("LOCATION_LON", "").strip()
+    db = SessionLocal()
+    try:
+        lat, lon = _resolve_location(db)
+    finally:
+        db.close()
+
     if not lat or not lon:
         return {"configured": False}
 
@@ -86,7 +126,6 @@ def get_weather():
             payload = json.load(resp)
     except Exception:
         log.exception("weather fetch failed")
-        # On failure return last cached value if we have one, else a graceful empty
         if _cache["data"] is not None:
             return _cache["data"]
         return {"configured": True, "error": "unavailable"}
@@ -103,3 +142,40 @@ def get_weather():
     _cache["at"] = time.time()
     _cache["data"] = data
     return data
+
+
+@router.get("/location", response_model=WeatherLocation)
+def get_location(db: Session = Depends(get_db)):
+    lat, lon = _resolve_location(db)
+    return WeatherLocation(
+        lat=float(lat) if lat else None,
+        lon=float(lon) if lon else None,
+    )
+
+
+@router.put("/location", response_model=WeatherLocation)
+def set_location(payload: WeatherLocation, db: Session = Depends(get_db)):
+    if payload.lat is None and payload.lon is None:
+        # Clear: revert to env-var fallback
+        s = db.get(models.Setting, LOCATION_KEY)
+        if s:
+            db.delete(s)
+            db.commit()
+        _cache["data"] = None
+        return get_location(db)
+
+    if payload.lat is None or payload.lon is None:
+        raise HTTPException(status_code=400, detail="Both lat and lon are required")
+    if not (-90 <= payload.lat <= 90) or not (-180 <= payload.lon <= 180):
+        raise HTTPException(status_code=400, detail="Coordinates out of range")
+
+    s = db.get(models.Setting, LOCATION_KEY)
+    body = json.dumps({"lat": payload.lat, "lon": payload.lon})
+    if s:
+        s.value = body
+    else:
+        s = models.Setting(key=LOCATION_KEY, value=body)
+        db.add(s)
+    db.commit()
+    _cache["data"] = None  # invalidate cache so next /weather fetches fresh
+    return WeatherLocation(lat=payload.lat, lon=payload.lon)

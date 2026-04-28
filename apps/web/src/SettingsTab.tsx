@@ -1,6 +1,7 @@
 import type { FamilyMember } from "./api";
 import FamilyTab from "./FamilyTab";
 import CalendarSettings from "./CalendarSettings";
+import WeatherSettings from "./WeatherSettings";
 import type { SleepSchedule } from "./SleepOverlay";
 
 type Props = {
@@ -79,26 +80,7 @@ export default function SettingsTab({
 
           <section>
             <h2 className="text-xl font-semibold mb-3">Weather</h2>
-            <div className="rounded-3xl bg-surface border border-line shadow-sm p-5">
-              <p className="text-sm text-ink-2">
-                Set <code className="px-1 py-0.5 rounded bg-surface-2">LOCATION_LAT</code> and{" "}
-                <code className="px-1 py-0.5 rounded bg-surface-2">LOCATION_LON</code> in{" "}
-                <code className="px-1 py-0.5 rounded bg-surface-2">apps/api/.env</code> to show
-                current weather in the header. Uses Open-Meteo (no API key needed).
-              </p>
-              <p className="text-sm text-ink-2 mt-2">
-                Find your latitude / longitude on{" "}
-                <a
-                  href="https://www.openstreetmap.org"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  openstreetmap.org
-                </a>
-                .
-              </p>
-            </div>
+            <WeatherSettings />
           </section>
         </div>
       </div>

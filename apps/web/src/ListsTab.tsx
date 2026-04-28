@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { api, type TodoItem, type TodoList } from "./api";
 import { PRESET_LIST_COLORS, PRESET_LIST_EMOJIS, tint } from "./ui";
 
+type FormState = { kind: "closed" } | { kind: "creating" } | { kind: "editing" };
+
 export default function ListsTab() {
   const [lists, setLists] = useState<TodoList[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [items, setItems] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNewList, setShowNewList] = useState(false);
-  const [editingList, setEditingList] = useState(false);
+  const [form, setForm] = useState<FormState>({ kind: "closed" });
 
   async function loadLists() {
     const ls = await api.listLists();
@@ -42,11 +43,14 @@ export default function ListsTab() {
       <aside className="space-y-2">
         <div className="text-xs uppercase tracking-wide text-muted px-2 mb-1">Lists</div>
         {lists.map((l) => {
-          const isActive = l.id === activeId;
+          const isActive = l.id === activeId && form.kind === "closed";
           return (
             <button
               key={l.id}
-              onClick={() => setActiveId(l.id)}
+              onClick={() => {
+                setActiveId(l.id);
+                setForm({ kind: "closed" });
+              }}
               className={
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition text-left " +
                 (isActive ? "shadow-sm" : "hover:bg-surface-2")
@@ -64,44 +68,54 @@ export default function ListsTab() {
           );
         })}
 
-        {showNewList ? (
+        <button
+          onClick={() => setForm({ kind: "creating" })}
+          className={
+            "w-full px-3 py-2.5 rounded-2xl text-left text-sm font-medium transition " +
+            (form.kind === "creating"
+              ? "bg-primary/10 text-primary"
+              : "text-ink-2 hover:bg-surface-2")
+          }
+        >
+          + New list
+        </button>
+      </aside>
+
+      <main>
+        {form.kind === "creating" ? (
           <ListForm
-            onCancel={() => setShowNewList(false)}
+            onCancel={() => setForm({ kind: "closed" })}
             onSaved={async (created) => {
-              setShowNewList(false);
+              setForm({ kind: "closed" });
               await loadLists();
               setActiveId(created.id);
             }}
           />
-        ) : (
-          <button
-            onClick={() => setShowNewList(true)}
-            className="w-full px-3 py-2.5 rounded-2xl text-ink-2 hover:bg-surface-2 text-left text-sm font-medium"
-          >
-            + New list
-          </button>
-        )}
-      </aside>
-
-      <main>
-        {!active ? (
-          <div className="rounded-3xl bg-surface border border-line p-8 text-center text-ink-2">
-            Create your first list — try "Grocery", "Packing", or "To-do".
-          </div>
-        ) : editingList ? (
+        ) : form.kind === "editing" && active ? (
           <ListForm
             initial={active}
-            onCancel={() => setEditingList(false)}
+            onCancel={() => setForm({ kind: "closed" })}
             onSaved={async () => {
-              setEditingList(false);
+              setForm({ kind: "closed" });
               await loadLists();
             }}
             onDeleted={async () => {
-              setEditingList(false);
+              setForm({ kind: "closed" });
               await api.deleteList(active.id);
               await loadLists();
             }}
           />
+        ) : !active ? (
+          <div className="rounded-3xl bg-surface border border-line p-10 text-center text-ink-2">
+            <div className="text-5xl mb-3">📝</div>
+            <p className="mb-4">Create your first list — try "Grocery", "Packing", or "To-do".</p>
+            <button
+              onClick={() => setForm({ kind: "creating" })}
+              className="px-5 py-2.5 rounded-2xl bg-primary text-white font-medium shadow-sm"
+            >
+              + New list
+            </button>
+          </div>
         ) : (
           <ListView
             list={active}
@@ -110,7 +124,7 @@ export default function ListsTab() {
               if (activeId !== null) await loadItems(activeId);
               await loadLists();
             }}
-            onEditList={() => setEditingList(true)}
+            onEditList={() => setForm({ kind: "editing" })}
           />
         )}
       </main>
@@ -330,8 +344,9 @@ function ListForm({
   return (
     <form
       onSubmit={submit}
-      className="rounded-3xl bg-surface border border-line shadow-sm p-5 grid gap-4"
+      className="rounded-3xl bg-surface border border-line shadow-sm p-6 grid gap-5 max-w-2xl"
     >
+      <h3 className="text-lg font-semibold">{initial ? "Edit list" : "New list"}</h3>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}

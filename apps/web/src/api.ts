@@ -199,6 +199,13 @@ export const api = {
     request<void>(`/calendar/events/${id}`, { method: "DELETE" }),
 
   weather: () => request<Weather>("/weather"),
+  weatherLocation: () =>
+    request<{ lat: number | null; lon: number | null }>("/weather/location"),
+  setWeatherLocation: (lat: number | null, lon: number | null) =>
+    request<{ lat: number | null; lon: number | null }>("/weather/location", {
+      method: "PUT",
+      body: JSON.stringify({ lat, lon }),
+    }),
 
   listLists: () => request<TodoList[]>("/lists"),
   createList: (body: TodoListInput) =>
