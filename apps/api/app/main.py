@@ -11,7 +11,7 @@ load_dotenv()
 
 from . import google_calendar
 from .db import Base, engine, ensure_schema
-from .routers import calendar, chores, members, rewards
+from .routers import calendar, chores, members, rewards, weather
 
 Base.metadata.create_all(bind=engine)
 ensure_schema()
@@ -42,6 +42,7 @@ app.include_router(members.router, prefix="/api")
 app.include_router(chores.router, prefix="/api")
 app.include_router(rewards.router, prefix="/api")
 app.include_router(calendar.router, prefix="/api")
+app.include_router(weather.router, prefix="/api")
 
 # In prod the frontend is built into ./static and served from the same origin.
 # Mount last so /api routes win.

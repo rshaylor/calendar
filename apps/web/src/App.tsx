@@ -4,6 +4,9 @@ import ChoresTab from "./ChoresTab";
 import RewardsTab from "./RewardsTab";
 import CalendarTab from "./CalendarTab";
 import SettingsTab from "./SettingsTab";
+import SleepOverlay, { useSleepMode } from "./SleepOverlay";
+import WeatherPill from "./WeatherPill";
+import { useIdleTimer } from "./hooks";
 
 type Tab = "calendar" | "chores" | "rewards" | "settings";
 
@@ -17,6 +20,9 @@ const SETTINGS_TAB: { id: Tab; label: string; icon: string } = {
   label: "Settings",
   icon: "⚙️",
 };
+
+const REFRESH_INTERVAL_MS = 30_000;
+const IDLE_RETURN_MS = 5 * 60_000;
 
 function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
@@ -33,6 +39,8 @@ export default function App() {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
+
+  const sleep = useSleepMode();
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -57,9 +65,18 @@ export default function App() {
     }
   }, []);
 
+  // Initial + periodic data refresh
   useEffect(() => {
     refresh();
+    const t = setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => clearInterval(t);
   }, [refresh]);
+
+  // Idle return to calendar
+  const onIdle = useCallback(() => {
+    setTab("calendar");
+  }, []);
+  useIdleTimer(IDLE_RETURN_MS, onIdle);
 
   const time = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const date = now.toLocaleDateString(undefined, {
@@ -99,21 +116,32 @@ export default function App() {
             <NavButton key={t.id} t={t} />
           ))}
         </nav>
-        <div className="px-3 pb-3">
+        <div className="px-3 pb-3 space-y-1">
+          <button
+            onClick={sleep.sleep}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-ink-2 hover:bg-surface-2 transition"
+            title="Sleep screen"
+          >
+            <span className="text-xl shrink-0">🌙</span>
+            <span className="hidden md:inline font-medium">Sleep</span>
+          </button>
           <NavButton t={SETTINGS_TAB} />
         </div>
       </aside>
 
       <main className="flex-1 overflow-auto">
-        <header className="px-6 md:px-10 py-6 flex items-end gap-6 flex-wrap">
+        <header className="px-6 md:px-10 py-6 flex items-end gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
               {allTabs.find((t) => t.id === tab)?.label}
             </h1>
             <div className="text-muted mt-1">{date}</div>
           </div>
-          <div className="ml-auto text-2xl md:text-3xl font-semibold tabular-nums text-ink-2">
-            {time}
+          <div className="ml-auto flex items-center gap-3">
+            <WeatherPill />
+            <div className="text-2xl md:text-3xl font-semibold tabular-nums text-ink-2">
+              {time}
+            </div>
           </div>
         </header>
 
@@ -138,10 +166,17 @@ export default function App() {
             />
           )}
           {tab === "settings" && (
-            <SettingsTab members={members} onMembersChanged={refresh} />
+            <SettingsTab
+              members={members}
+              onMembersChanged={refresh}
+              sleepSchedule={sleep.schedule}
+              onSleepScheduleChange={sleep.setSchedule}
+            />
           )}
         </div>
       </main>
+
+      <SleepOverlay active={sleep.active} onWake={sleep.wake} />
     </div>
   );
 }

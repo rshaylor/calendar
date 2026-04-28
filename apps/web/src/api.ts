@@ -157,6 +157,17 @@ export const api = {
     }),
   deleteEvent: (id: number) =>
     request<void>(`/calendar/events/${id}`, { method: "DELETE" }),
+
+  weather: () => request<Weather>("/weather"),
+};
+
+export type Weather = {
+  configured: boolean;
+  temperature?: number;
+  icon?: string;
+  label?: string;
+  code?: number;
+  error?: string;
 };
 
 export type EventWriteBody = {
