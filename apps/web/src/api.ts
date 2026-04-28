@@ -54,6 +54,14 @@ export type Redemption = {
   redeemed_at: string;
 };
 
+export type HistoryEntry = {
+  type: "chore" | "reward" | "adjust";
+  amount: number;
+  label: string;
+  emoji: string;
+  at: string;
+};
+
 export type GoogleAccount = {
   id: number;
   email: string;
@@ -136,6 +144,8 @@ export const api = {
       `/balances/${memberId}/adjust`,
       { method: "POST", body: JSON.stringify({ amount, reason }) },
     ),
+  memberHistory: (memberId: number) =>
+    request<HistoryEntry[]>(`/balances/${memberId}/history`),
 
   calendarStatus: () => request<CalendarStatus>("/calendar/status"),
   calendarAuthUrl: () => request<{ url: string }>("/calendar/auth-url"),

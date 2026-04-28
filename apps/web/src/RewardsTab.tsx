@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type Balance, type FamilyMember, type Reward } from "./api";
+import HistoryModal from "./HistoryModal";
 import { PRESET_REWARD_EMOJIS, tint } from "./ui";
 
 type Props = {
@@ -13,6 +14,7 @@ export default function RewardsTab({ members, rewards, balances, onChanged }: Pr
   const [showForm, setShowForm] = useState(false);
   const [redeemingFor, setRedeemingFor] = useState<{ rewardId: number } | null>(null);
   const [adjustingMemberId, setAdjustingMemberId] = useState<number | null>(null);
+  const [historyMember, setHistoryMember] = useState<FamilyMember | null>(null);
 
   const kids = members.filter((m) => m.is_kid);
   const balanceFor = (id: number) => balances.find((b) => b.member_id === id)?.stars ?? 0;
@@ -54,12 +56,20 @@ export default function RewardsTab({ members, rewards, balances, onChanged }: Pr
                     <div className="font-semibold text-lg">{k.name}</div>
                     <div className="text-xl text-star font-semibold">⭐ {stars}</div>
                   </div>
-                  <button
-                    onClick={() => setAdjustingMemberId(adjusting ? null : k.id)}
-                    className="text-sm text-ink-2 hover:text-ink px-3 py-1.5 rounded-full hover:bg-white/60"
-                  >
-                    {adjusting ? "close" : "adjust"}
-                  </button>
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => setAdjustingMemberId(adjusting ? null : k.id)}
+                      className="text-sm text-ink-2 hover:text-ink px-3 py-1 rounded-full hover:bg-white/60"
+                    >
+                      {adjusting ? "close" : "adjust"}
+                    </button>
+                    <button
+                      onClick={() => setHistoryMember(k)}
+                      className="text-sm text-ink-2 hover:text-ink px-3 py-1 rounded-full hover:bg-white/60"
+                    >
+                      history
+                    </button>
+                  </div>
                 </div>
                 {adjusting && (
                   <BalanceAdjuster
@@ -163,6 +173,10 @@ export default function RewardsTab({ members, rewards, balances, onChanged }: Pr
           </button>
         )}
       </div>
+
+      {historyMember && (
+        <HistoryModal member={historyMember} onClose={() => setHistoryMember(null)} />
+      )}
     </div>
   );
 }

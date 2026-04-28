@@ -47,6 +47,52 @@ function formatTime(iso: string): string {
   });
 }
 
+/**
+ * Lay out overlapping events into side-by-side tracks within a day column.
+ * Returns a map from event id to {track, tracks} where `track` is the column
+ * index (0-based) and `tracks` is the total columns this event has to share with.
+ */
+function layoutDay(events: CalendarEvent[]): Map<number, { track: number; tracks: number }> {
+  const out = new Map<number, { track: number; tracks: number }>();
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+  );
+  if (sorted.length === 0) return out;
+
+  // Phase 1: greedy track assignment (interval graph coloring)
+  const trackEnds: number[] = [];
+  const trackOf = new Map<number, number>();
+  for (const ev of sorted) {
+    const start = new Date(ev.start_at).getTime();
+    const end = new Date(ev.end_at).getTime();
+    let track = trackEnds.findIndex((e) => e <= start);
+    if (track === -1) {
+      track = trackEnds.length;
+      trackEnds.push(end);
+    } else {
+      trackEnds[track] = end;
+    }
+    trackOf.set(ev.id, track);
+  }
+
+  // Phase 2: each event's "tracks" = max track index among events it overlaps with, +1
+  for (const ev of sorted) {
+    const evStart = new Date(ev.start_at).getTime();
+    const evEnd = new Date(ev.end_at).getTime();
+    let maxTrack = trackOf.get(ev.id)!;
+    for (const other of sorted) {
+      if (other.id === ev.id) continue;
+      const oStart = new Date(other.start_at).getTime();
+      const oEnd = new Date(other.end_at).getTime();
+      if (oStart < evEnd && evStart < oEnd) {
+        maxTrack = Math.max(maxTrack, trackOf.get(other.id)!);
+      }
+    }
+    out.set(ev.id, { track: trackOf.get(ev.id)!, tracks: maxTrack + 1 });
+  }
+  return out;
+}
+
 export default function WeekView({ events, members, days = 5, onEventClick, onSlotClick }: Props) {
   const today = startOfDay(new Date());
   const dayList = useMemo(
@@ -181,9 +227,10 @@ export default function WeekView({ events, members, days = 5, onEventClick, onSl
                 />
               ))}
 
-              {dayEvents
-                .filter((e) => !e.all_day)
-                .map((ev) => {
+              {(() => {
+                const timed = dayEvents.filter((e) => !e.all_day);
+                const layout = layoutDay(timed);
+                return timed.map((ev) => {
                   const start = new Date(ev.start_at);
                   const end = new Date(ev.end_at);
                   const startMin = start.getHours() * 60 + start.getMinutes();
@@ -195,6 +242,11 @@ export default function WeekView({ events, members, days = 5, onEventClick, onSl
                   );
                   const member = ev.member_id ? memberById.get(ev.member_id) : null;
                   const color = member?.color ?? ev.color ?? "#86b9f7";
+                  const slot = layout.get(ev.id) ?? { track: 0, tracks: 1 };
+                  const widthPct = 100 / slot.tracks;
+                  const leftPct = slot.track * widthPct;
+                  // small inset between tracks for visual separation
+                  const insetPx = 2;
 
                   return (
                     <button
@@ -207,18 +259,19 @@ export default function WeekView({ events, members, days = 5, onEventClick, onSl
                       style={{
                         top,
                         height,
-                        left: 4,
-                        right: 4,
+                        left: `calc(${leftPct}% + ${insetPx}px)`,
+                        width: `calc(${widthPct}% - ${insetPx * 2}px)`,
                         background: tint(color, 0.28),
                         borderLeft: `3px solid ${color}`,
+                        zIndex: slot.track + 1,
                       }}
                       title={`${ev.summary} · ${formatTime(ev.start_at)} – ${formatTime(ev.end_at)}`}
                     >
                       <div className="font-semibold leading-tight truncate">{ev.summary}</div>
-                      <div className="text-ink-2 leading-tight">
+                      <div className="text-ink-2 leading-tight truncate">
                         {formatTime(ev.start_at)} – {formatTime(ev.end_at)}
                       </div>
-                      {member && (
+                      {member && slot.tracks <= 2 && (
                         <div
                           className="absolute bottom-1 right-1 w-5 h-5 rounded-full text-[11px] flex items-center justify-center"
                           style={{ background: "white" }}
@@ -228,7 +281,8 @@ export default function WeekView({ events, members, days = 5, onEventClick, onSl
                       )}
                     </button>
                   );
-                })}
+                });
+              })()}
 
               {nowOffset !== null && (
                 <div

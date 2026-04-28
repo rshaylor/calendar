@@ -95,6 +95,68 @@ def list_redemptions(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/balances/{member_id}/history", response_model=list[schemas.HistoryEntry])
+def member_history(member_id: int, db: Session = Depends(get_db)):
+    member = db.get(models.FamilyMember, member_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    entries: list[dict] = []
+
+    completions = (
+        db.query(models.ChoreCompletion)
+        .filter(
+            models.ChoreCompletion.member_id == member_id,
+            models.ChoreCompletion.stars_awarded > 0,
+        )
+        .all()
+    )
+    for c in completions:
+        chore = db.get(models.Chore, c.chore_id)
+        entries.append(
+            {
+                "type": "chore",
+                "amount": c.stars_awarded,
+                "label": chore.name if chore else "Chore",
+                "emoji": chore.emoji if chore else "✅",
+                "at": c.completed_at,
+            }
+        )
+
+    redemptions = (
+        db.query(models.Redemption).filter(models.Redemption.member_id == member_id).all()
+    )
+    for r in redemptions:
+        entries.append(
+            {
+                "type": "reward",
+                "amount": -r.star_cost,
+                "label": r.reward_name,
+                "emoji": r.reward_emoji,
+                "at": r.redeemed_at,
+            }
+        )
+
+    adjustments = (
+        db.query(models.StarAdjustment)
+        .filter(models.StarAdjustment.member_id == member_id)
+        .all()
+    )
+    for a in adjustments:
+        entries.append(
+            {
+                "type": "adjust",
+                "amount": a.amount,
+                "label": a.reason or ("Bonus" if a.amount > 0 else "Deduction"),
+                "emoji": "✨" if a.amount > 0 else "📉",
+                "at": a.created_at,
+            }
+        )
+
+    entries.sort(key=lambda e: e["at"], reverse=True)
+    return entries
+
+
 @router.post(
     "/balances/{member_id}/adjust",
     response_model=schemas.StarAdjustmentRead,

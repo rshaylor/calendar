@@ -104,6 +104,14 @@ class StarAdjustmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class HistoryEntry(BaseModel):
+    type: Literal["chore", "reward", "adjust"]
+    amount: int
+    label: str
+    emoji: str
+    at: datetime
+
+
 class TodoListBase(BaseModel):
     name: str
     emoji: str = "📝"
