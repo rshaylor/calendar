@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, type FamilyMember, type HistoryEntry } from "./api";
 import { tint } from "./ui";
 
@@ -7,24 +7,31 @@ type Props = {
   onClose: () => void;
 };
 
+const PAGE_SIZE = 100;
+
 export default function HistoryModal({ member, onClose }: Props) {
   const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const data = await api.memberHistory(member.id);
-        if (!cancelled) setEntries(data);
-      } catch (e) {
-        if (!cancelled) setError(String(e));
-      }
+  async function load(nextLimit: number) {
+    setLoading(true);
+    try {
+      const data = await api.memberHistory(member.id, nextLimit);
+      setEntries(data);
+      setLimit(nextLimit);
+      setError(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+  }
+
+  useEffect(() => {
+    load(PAGE_SIZE);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [member.id]);
 
   useEffect(() => {
@@ -34,6 +41,21 @@ export default function HistoryModal({ member, onClose }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const grouped = useMemo(() => {
+    if (!entries) return [];
+    const out: { day: string; entries: HistoryEntry[] }[] = [];
+    for (const e of entries) {
+      const day = new Date(e.at).toDateString();
+      const last = out[out.length - 1];
+      if (last && last.day === day) last.entries.push(e);
+      else out.push({ day, entries: [e] });
+    }
+    return out;
+  }, [entries]);
+
+  // If we got back exactly `limit` entries there might be more.
+  const maybeMore = entries !== null && entries.length === limit && limit < 500;
 
   return (
     <div
@@ -67,29 +89,52 @@ export default function HistoryModal({ member, onClose }: Props) {
           {entries && entries.length === 0 && (
             <p className="text-ink-2 px-3 py-6 text-center">Nothing yet.</p>
           )}
-          {entries && entries.length > 0 && (
-            <ul className="space-y-1">
-              {entries.map((e, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/60 transition"
-                >
-                  <span className="text-2xl shrink-0">{e.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{e.label}</div>
-                    <div className="text-xs text-ink-2">{formatWhen(e.at)}</div>
-                  </div>
-                  <div
-                    className={
-                      "tabular-nums font-semibold " +
-                      (e.amount > 0 ? "text-success" : "text-danger")
-                    }
+          {grouped.map((group) => (
+            <div key={group.day} className="mb-3">
+              <div className="sticky top-0 bg-white/70 backdrop-blur-sm px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ink-2 rounded">
+                {formatDay(group.day)}
+              </div>
+              <ul className="mt-1">
+                {group.entries.map((e, i) => (
+                  <li
+                    key={`${group.day}-${i}`}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/60 transition"
                   >
-                    {e.amount > 0 ? `+${e.amount}` : e.amount} ⭐
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    <span className="text-2xl shrink-0">{e.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{e.label}</div>
+                      <div className="text-xs text-ink-2">{formatTime(e.at)}</div>
+                    </div>
+                    <div
+                      className={
+                        "tabular-nums font-semibold " +
+                        (e.amount > 0 ? "text-success" : "text-danger")
+                      }
+                    >
+                      {e.amount > 0 ? `+${e.amount}` : e.amount} ⭐
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          {entries && entries.length > 0 && (
+            <div className="px-3 py-3 text-center text-xs text-muted">
+              Showing {entries.length} most recent
+              {maybeMore && (
+                <>
+                  {" · "}
+                  <button
+                    onClick={() => load(Math.min(limit + PAGE_SIZE, 500))}
+                    disabled={loading}
+                    className="text-primary hover:underline disabled:opacity-50"
+                  >
+                    {loading ? "loading…" : "show more"}
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -97,26 +142,24 @@ export default function HistoryModal({ member, onClose }: Props) {
   );
 }
 
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const sameDay =
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear();
-  const yesterday = new Date(now);
+function formatDay(dayStr: string): string {
+  const d = new Date(dayStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday =
-    d.getDate() === yesterday.getDate() &&
-    d.getMonth() === yesterday.getMonth() &&
-    d.getFullYear() === yesterday.getFullYear();
-
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (sameDay) return `Today, ${time}`;
-  if (isYesterday) return `Yesterday, ${time}`;
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
   return d.toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
     day: "numeric",
-  }) + `, ${time}`;
+  });
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

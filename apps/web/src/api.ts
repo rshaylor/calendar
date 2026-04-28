@@ -157,8 +157,8 @@ export const api = {
       `/balances/${memberId}/adjust`,
       { method: "POST", body: JSON.stringify({ amount, reason }) },
     ),
-  memberHistory: (memberId: number) =>
-    request<HistoryEntry[]>(`/balances/${memberId}/history`),
+  memberHistory: (memberId: number, limit = 100) =>
+    request<HistoryEntry[]>(`/balances/${memberId}/history?limit=${limit}`),
 
   calendarStatus: () => request<CalendarStatus>("/calendar/status"),
   calendarAuthUrl: () => request<{ url: string }>("/calendar/auth-url"),

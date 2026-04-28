@@ -96,7 +96,15 @@ def list_redemptions(db: Session = Depends(get_db)):
 
 
 @router.get("/balances/{member_id}/history", response_model=list[schemas.HistoryEntry])
-def member_history(member_id: int, db: Session = Depends(get_db)):
+def member_history(
+    member_id: int,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    if limit < 1:
+        limit = 1
+    if limit > 500:
+        limit = 500
     member = db.get(models.FamilyMember, member_id)
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
@@ -154,7 +162,7 @@ def member_history(member_id: int, db: Session = Depends(get_db)):
         )
 
     entries.sort(key=lambda e: e["at"], reverse=True)
-    return entries
+    return entries[:limit]
 
 
 @router.post(
