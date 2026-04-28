@@ -131,6 +131,11 @@ export const api = {
 
   listBalances: () => request<Balance[]>("/balances"),
   listRedemptions: () => request<Redemption[]>("/redemptions"),
+  adjustBalance: (memberId: number, amount: number, reason?: string) =>
+    request<{ id: number; member_id: number; amount: number; reason: string | null; created_at: string }>(
+      `/balances/${memberId}/adjust`,
+      { method: "POST", body: JSON.stringify({ amount, reason }) },
+    ),
 
   calendarStatus: () => request<CalendarStatus>("/calendar/status"),
   calendarAuthUrl: () => request<{ url: string }>("/calendar/auth-url"),

@@ -19,7 +19,12 @@ def _balance(db: Session, member_id: int) -> int:
         .filter(models.Redemption.member_id == member_id)
         .scalar()
     )
-    return int(earned) - int(spent)
+    adjusted = (
+        db.query(func.coalesce(func.sum(models.StarAdjustment.amount), 0))
+        .filter(models.StarAdjustment.member_id == member_id)
+        .scalar()
+    )
+    return int(earned) + int(adjusted) - int(spent)
 
 
 @router.get("/balances", response_model=list[schemas.Balance])
@@ -88,3 +93,30 @@ def list_redemptions(db: Session = Depends(get_db)):
         .limit(50)
         .all()
     )
+
+
+@router.post(
+    "/balances/{member_id}/adjust",
+    response_model=schemas.StarAdjustmentRead,
+    status_code=201,
+)
+def adjust_balance(
+    member_id: int,
+    payload: schemas.StarAdjustmentCreate,
+    db: Session = Depends(get_db),
+):
+    member = db.get(models.FamilyMember, member_id)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if payload.amount == 0:
+        raise HTTPException(status_code=400, detail="Amount must be non-zero")
+
+    adjustment = models.StarAdjustment(
+        member_id=member_id,
+        amount=payload.amount,
+        reason=(payload.reason or None),
+    )
+    db.add(adjustment)
+    db.commit()
+    db.refresh(adjustment)
+    return adjustment

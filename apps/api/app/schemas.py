@@ -90,6 +90,20 @@ class Balance(BaseModel):
     stars: int
 
 
+class StarAdjustmentCreate(BaseModel):
+    amount: int
+    reason: str | None = None
+
+
+class StarAdjustmentRead(BaseModel):
+    id: int
+    member_id: int
+    amount: int
+    reason: str | None
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TodoListBase(BaseModel):
     name: str
     emoji: str = "📝"

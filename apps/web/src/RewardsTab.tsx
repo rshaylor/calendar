@@ -12,6 +12,7 @@ type Props = {
 export default function RewardsTab({ members, rewards, balances, onChanged }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [redeemingFor, setRedeemingFor] = useState<{ rewardId: number } | null>(null);
+  const [adjustingMemberId, setAdjustingMemberId] = useState<number | null>(null);
 
   const kids = members.filter((m) => m.is_kid);
   const balanceFor = (id: number) => balances.find((b) => b.member_id === id)?.stars ?? 0;
@@ -38,21 +39,37 @@ export default function RewardsTab({ members, rewards, balances, onChanged }: Pr
         <div className="grid gap-3 mb-6 sm:grid-cols-2 lg:grid-cols-3">
           {kids.map((k) => {
             const stars = balanceFor(k.id);
+            const adjusting = adjustingMemberId === k.id;
             return (
               <div
                 key={k.id}
-                className="rounded-3xl p-5 flex items-center gap-4 shadow-sm"
+                className="rounded-3xl p-5 shadow-sm"
                 style={{ background: tint(k.color, 0.18) }}
               >
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-3xl bg-white shadow-sm"
-                >
-                  {k.avatar_emoji}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-3xl bg-white shadow-sm">
+                    {k.avatar_emoji}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-lg">{k.name}</div>
+                    <div className="text-xl text-star font-semibold">⭐ {stars}</div>
+                  </div>
+                  <button
+                    onClick={() => setAdjustingMemberId(adjusting ? null : k.id)}
+                    className="text-sm text-ink-2 hover:text-ink px-3 py-1.5 rounded-full hover:bg-white/60"
+                  >
+                    {adjusting ? "close" : "adjust"}
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-lg">{k.name}</div>
-                  <div className="text-xl text-star font-semibold">⭐ {stars}</div>
-                </div>
+                {adjusting && (
+                  <BalanceAdjuster
+                    memberId={k.id}
+                    onDone={() => {
+                      setAdjustingMemberId(null);
+                      onChanged();
+                    }}
+                  />
+                )}
               </div>
             );
           })}
@@ -145,6 +162,87 @@ export default function RewardsTab({ members, rewards, balances, onChanged }: Pr
             + Add reward
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function BalanceAdjuster({
+  memberId,
+  onDone,
+}: {
+  memberId: number;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = useState(1);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function apply(sign: 1 | -1) {
+    if (amount === 0) return;
+    setBusy(true);
+    try {
+      await api.adjustBalance(memberId, sign * amount, reason.trim() || undefined);
+      onDone();
+    } catch (e) {
+      alert(String(e));
+      setBusy(false);
+    }
+  }
+
+  const presets = [1, 5, 10];
+
+  return (
+    <div className="mt-4 pt-4 border-t border-white/40 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm text-ink-2">Quick:</span>
+        {presets.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setAmount(p)}
+            className={
+              "px-3 py-1.5 rounded-full text-sm font-medium transition " +
+              (amount === p ? "bg-white shadow-sm" : "bg-white/40 hover:bg-white/70")
+            }
+          >
+            {p}
+          </button>
+        ))}
+        <input
+          type="number"
+          min={1}
+          value={amount}
+          onChange={(e) => setAmount(Math.max(0, parseInt(e.target.value || "0", 10)))}
+          className="w-20 px-3 py-1.5 rounded-full bg-white/70 border border-white/40 text-sm tabular-nums"
+        />
+      </div>
+
+      <input
+        type="text"
+        placeholder="Reason (optional)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="w-full px-3 py-2 rounded-xl bg-white/70 border border-white/40 text-sm"
+      />
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy || amount === 0}
+          onClick={() => apply(1)}
+          className="flex-1 px-4 py-2 rounded-xl bg-success text-white font-medium shadow-sm disabled:opacity-50"
+        >
+          + Add ⭐ {amount}
+        </button>
+        <button
+          type="button"
+          disabled={busy || amount === 0}
+          onClick={() => apply(-1)}
+          className="flex-1 px-4 py-2 rounded-xl bg-danger text-white font-medium shadow-sm disabled:opacity-50"
+        >
+          − Take ⭐ {amount}
+        </button>
       </div>
     </div>
   );

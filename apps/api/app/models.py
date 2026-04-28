@@ -72,6 +72,16 @@ class Redemption(Base):
     redeemed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
+class StarAdjustment(Base):
+    __tablename__ = "star_adjustments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(Integer, ForeignKey("family_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount = Column(Integer, nullable=False)  # positive = bonus, negative = deduction
+    reason = Column(String, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
 class GoogleAccount(Base):
     __tablename__ = "google_accounts"
 
