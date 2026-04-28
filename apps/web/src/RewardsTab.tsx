@@ -38,7 +38,7 @@ export default function RewardsTab({ members, rewards, balances, onChanged }: Pr
   return (
     <div>
       {kids.length > 0 && (
-        <div className="grid gap-3 mb-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 mb-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {kids.map((k) => {
             const stars = balanceFor(k.id);
             const adjusting = adjustingMemberId === k.id;

@@ -153,7 +153,14 @@ export const api = {
 
   calendarStatus: () => request<CalendarStatus>("/calendar/status"),
   calendarAuthUrl: () => request<{ url: string }>("/calendar/auth-url"),
-  calendarEvents: (days = 7) => request<CalendarEvent[]>(`/calendar/events?days=${days}`),
+  calendarEvents: (params: { days?: number; from?: string; to?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.from) q.set("from_date", params.from);
+    if (params.to) q.set("to_date", params.to);
+    if (params.days) q.set("days", String(params.days));
+    const qs = q.toString();
+    return request<CalendarEvent[]>(`/calendar/events${qs ? "?" + qs : ""}`);
+  },
   disconnectGoogle: (id: number) =>
     request<void>(`/calendar/accounts/${id}`, { method: "DELETE" }),
   syncCalendar: () => request<{ status: string }>("/calendar/sync", { method: "POST" }),

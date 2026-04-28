@@ -93,14 +93,23 @@ def disconnect(account_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/events", response_model=list[schemas.CalendarEventRead])
-def list_events(days: int = Query(default=7, ge=1, le=30), db: Session = Depends(get_db)):
-    now = datetime.now(timezone.utc)
-    until = now + timedelta(days=days)
+def list_events(
+    days: int = Query(default=None, ge=1, le=60),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    if from_date and to_date:
+        start = datetime.fromisoformat(from_date)
+        end = datetime.fromisoformat(to_date)
+    else:
+        start = datetime.now(timezone.utc)
+        end = start + timedelta(days=days or 7)
     return (
         db.query(models.CalendarEvent)
         .filter(
-            models.CalendarEvent.end_at >= now,
-            models.CalendarEvent.start_at <= until,
+            models.CalendarEvent.end_at >= start,
+            models.CalendarEvent.start_at <= end,
         )
         .order_by(models.CalendarEvent.start_at)
         .all()

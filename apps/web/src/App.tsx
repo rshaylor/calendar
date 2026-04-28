@@ -154,7 +154,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="px-6 md:px-10 pb-12 max-w-6xl">
+        <div className="px-6 md:px-10 pb-12">
           {error && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-danger/10 text-danger">{error}</div>
           )}

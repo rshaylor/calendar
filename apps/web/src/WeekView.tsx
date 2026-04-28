@@ -6,6 +6,8 @@ type Props = {
   events: CalendarEvent[];
   members: FamilyMember[];
   days?: number;
+  /** Start date of the visible window. Defaults to today. */
+  startDate?: Date;
   onEventClick?: (event: CalendarEvent) => void;
   onSlotClick?: (start: Date) => void;
 };
@@ -93,11 +95,19 @@ function layoutDay(events: CalendarEvent[]): Map<number, { track: number; tracks
   return out;
 }
 
-export default function WeekView({ events, members, days = 5, onEventClick, onSlotClick }: Props) {
+export default function WeekView({
+  events,
+  members,
+  days = 5,
+  startDate,
+  onEventClick,
+  onSlotClick,
+}: Props) {
   const today = startOfDay(new Date());
+  const start = useMemo(() => (startDate ? startOfDay(startDate) : today), [startDate, today]);
   const dayList = useMemo(
-    () => Array.from({ length: days }, (_, i) => addDays(today, i)),
-    [today, days],
+    () => Array.from({ length: days }, (_, i) => addDays(start, i)),
+    [start, days],
   );
 
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);

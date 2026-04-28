@@ -21,7 +21,7 @@ export default function FamilyTab({ members, onChanged }: Props) {
       {members.length === 0 ? (
         <p className="text-muted">No family members yet.</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {members.map((m) => (
             <li
               key={m.id}

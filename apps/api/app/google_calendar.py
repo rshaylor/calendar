@@ -28,7 +28,8 @@ REDIRECT_URI = os.environ.get(
     "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/calendar/callback"
 )
 SYNC_INTERVAL_SECONDS = int(os.environ.get("CALENDAR_SYNC_SECONDS", "600"))
-SYNC_DAYS_AHEAD = int(os.environ.get("CALENDAR_DAYS_AHEAD", "14"))
+SYNC_DAYS_AHEAD = int(os.environ.get("CALENDAR_DAYS_AHEAD", "35"))
+SYNC_DAYS_BACK = int(os.environ.get("CALENDAR_DAYS_BACK", "7"))
 
 
 def is_configured() -> bool:
@@ -142,7 +143,7 @@ def sync_account(db: Session, account: models.GoogleAccount) -> int:
     )
 
     now = datetime.now(timezone.utc)
-    time_min = now.isoformat()
+    time_min = (now - timedelta(days=SYNC_DAYS_BACK)).isoformat()
     time_max = (now + timedelta(days=SYNC_DAYS_AHEAD)).isoformat()
 
     # Replace this account's events for the window with fresh data from enabled calendars
