@@ -173,18 +173,15 @@ class TodoItemRead(TodoItemBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class GoogleAccountRead(BaseModel):
-    id: int
-    email: str
-    connected_at: datetime
-    last_synced_at: datetime | None
-    model_config = ConfigDict(from_attributes=True)
-
-
 class CalendarEventRead(BaseModel):
-    id: int
-    google_event_id: str
-    calendar_id: str
+    """An event coming back to the frontend.
+
+    `uid` identifies the event for update/delete via HA's WebSocket API.
+    For synthetic events (birthdays) `uid` is a "birthday:..." string and
+    `read_only` is true.
+    """
+    uid: str
+    entity_id: str
     summary: str
     location: str | None
     color: str | None = None
@@ -192,17 +189,14 @@ class CalendarEventRead(BaseModel):
     start_at: datetime
     end_at: datetime
     all_day: bool
-    read_only: bool = False  # synthetic events (e.g. birthdays) can't be edited
-    model_config = ConfigDict(from_attributes=True)
+    read_only: bool = False
 
 
 class CalendarSubscriptionRead(BaseModel):
     id: int
-    account_id: int
-    google_calendar_id: str
-    summary: str
-    background_color: str | None
-    is_primary: bool
+    entity_id: str
+    friendly_name: str
+    color: str | None
     enabled: bool
     member_id: int | None = None
     model_config = ConfigDict(from_attributes=True)
@@ -211,6 +205,7 @@ class CalendarSubscriptionRead(BaseModel):
 class CalendarSubscriptionUpdate(BaseModel):
     enabled: bool | None = None
     member_id: int | None = None
+    color: str | None = None
 
 
 class EventWrite(BaseModel):
@@ -229,7 +224,3 @@ class EventPatch(BaseModel):
     all_day: bool | None = None
     start: str | None = None
     end: str | None = None
-
-
-class AuthUrl(BaseModel):
-    url: str

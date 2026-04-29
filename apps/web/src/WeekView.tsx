@@ -51,11 +51,11 @@ function formatTime(iso: string): string {
 
 /**
  * Lay out overlapping events into side-by-side tracks within a day column.
- * Returns a map from event id to {track, tracks} where `track` is the column
+ * Returns a map from event uid to {track, tracks} where `track` is the column
  * index (0-based) and `tracks` is the total columns this event has to share with.
  */
-function layoutDay(events: CalendarEvent[]): Map<number, { track: number; tracks: number }> {
-  const out = new Map<number, { track: number; tracks: number }>();
+function layoutDay(events: CalendarEvent[]): Map<string, { track: number; tracks: number }> {
+  const out = new Map<string, { track: number; tracks: number }>();
   const sorted = [...events].sort(
     (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
   );
@@ -63,7 +63,7 @@ function layoutDay(events: CalendarEvent[]): Map<number, { track: number; tracks
 
   // Phase 1: greedy track assignment (interval graph coloring)
   const trackEnds: number[] = [];
-  const trackOf = new Map<number, number>();
+  const trackOf = new Map<string, number>();
   for (const ev of sorted) {
     const start = new Date(ev.start_at).getTime();
     const end = new Date(ev.end_at).getTime();
@@ -74,23 +74,23 @@ function layoutDay(events: CalendarEvent[]): Map<number, { track: number; tracks
     } else {
       trackEnds[track] = end;
     }
-    trackOf.set(ev.id, track);
+    trackOf.set(ev.uid, track);
   }
 
   // Phase 2: each event's "tracks" = max track index among events it overlaps with, +1
   for (const ev of sorted) {
     const evStart = new Date(ev.start_at).getTime();
     const evEnd = new Date(ev.end_at).getTime();
-    let maxTrack = trackOf.get(ev.id)!;
+    let maxTrack = trackOf.get(ev.uid)!;
     for (const other of sorted) {
-      if (other.id === ev.id) continue;
+      if (other.uid === ev.uid) continue;
       const oStart = new Date(other.start_at).getTime();
       const oEnd = new Date(other.end_at).getTime();
       if (oStart < evEnd && evStart < oEnd) {
-        maxTrack = Math.max(maxTrack, trackOf.get(other.id)!);
+        maxTrack = Math.max(maxTrack, trackOf.get(other.uid)!);
       }
     }
-    out.set(ev.id, { track: trackOf.get(ev.id)!, tracks: maxTrack + 1 });
+    out.set(ev.uid, { track: trackOf.get(ev.uid)!, tracks: maxTrack + 1 });
   }
   return out;
 }
@@ -254,7 +254,7 @@ export default function WeekView({
                   );
                   const member = ev.member_id ? memberById.get(ev.member_id) : null;
                   const color = member?.color ?? ev.color ?? "#86b9f7";
-                  const slot = layout.get(ev.id) ?? { track: 0, tracks: 1 };
+                  const slot = layout.get(ev.uid) ?? { track: 0, tracks: 1 };
                   const widthPct = 100 / slot.tracks;
                   const leftPct = slot.track * widthPct;
                   // small inset between tracks for visual separation
@@ -262,7 +262,7 @@ export default function WeekView({
 
                   return (
                     <button
-                      key={ev.id}
+                      key={ev.uid}
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick?.(ev);
@@ -352,7 +352,7 @@ function AllDayStrip({
               const color = member?.color ?? ev.color ?? "#86b9f7";
               return (
                 <button
-                  key={ev.id}
+                  key={ev.uid}
                   onClick={(e) => {
                     e.stopPropagation();
                     onEventClick?.(ev);

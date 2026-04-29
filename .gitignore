@@ -9,6 +9,11 @@ venv/
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
+
+# Vite produces these from vite.config.ts during typecheck
+apps/web/vite.config.d.ts
+apps/web/vite.config.js
 
 # SQLite (mounted via docker volume in dev)
 *.db

@@ -1,7 +1,7 @@
 name: Family Hub
-version: "0.2.1"
+version: "0.3.0"
 slug: family_hub
-description: A Skylight-style family hub — shared calendar, chores with star rewards, and lists, on a kitchen touchscreen and family phones.
+description: Skylight-style family hub — shared calendar, chores with star rewards, lists. Reads calendars from any Home Assistant calendar integration (Google, Office 365, Local Calendar, CalDAV).
 url: https://github.com/rshaylor/calendar
 arch:
   - aarch64
@@ -20,37 +20,23 @@ panel_title: Family Hub
 # Anyone in the household with HA access can use it (not admin-only).
 panel_admin: false
 
-# Direct host port for the Google OAuth callback URL (must be a stable
-# URL Google can redirect to). Family members reach the app via Ingress;
-# only the OAuth handshake uses this port.
-ports:
-  "8000/tcp": 8000
-ports_description:
-  "8000/tcp": Google Calendar OAuth callback
-
 # Persistent SQLite at /data/app.db survives restarts and updates.
 # AppArmor profile is currently disabled — the previous profile blocked
 # s6-overlay's /init from re-executing on restart. Revisit once we have
 # a profile that's been tested through a full stop/start cycle.
 apparmor: false
 
+# We talk to HA Core's REST + WebSocket API to read/write calendars.
+# This injects SUPERVISOR_TOKEN into the container; no extra config needed.
+homeassistant_api: true
+hassio_api: false
+host_network: false
+
 # Add-on configuration form rendered in the HA UI.
+# Calendar setup happens in HA itself — no Google credentials live here any more.
 options:
-  google_client_id: ""
-  google_client_secret: ""
-  google_redirect_uri: "http://homeassistant.local:8000/api/calendar/callback"
   location_lat: ""
   location_lon: ""
-  calendar_sync_seconds: 1800
 schema:
-  google_client_id: str
-  google_client_secret: password
-  google_redirect_uri: str
   location_lat: str?
   location_lon: str?
-  calendar_sync_seconds: int(60,)
-
-# We don't need any HA APIs at runtime.
-hassio_api: false
-homeassistant_api: false
-host_network: false

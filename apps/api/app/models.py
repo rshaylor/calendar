@@ -93,26 +93,15 @@ class Setting(Base):
     value = Column(String, nullable=True)
 
 
-class GoogleAccount(Base):
-    __tablename__ = "google_accounts"
-
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, nullable=False, unique=True)
-    refresh_token = Column(String, nullable=False)
-    connected_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    last_synced_at = Column(DateTime, nullable=True)
-
-
 class CalendarSubscription(Base):
+    """Local metadata for an HA calendar entity: visibility, owner, color override."""
     __tablename__ = "calendar_subscriptions"
 
     id = Column(Integer, primary_key=True, index=True)
-    account_id = Column(Integer, ForeignKey("google_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    google_calendar_id = Column(String, nullable=False)
-    summary = Column(String, nullable=False, default="")
-    background_color = Column(String, nullable=True)
-    is_primary = Column(Boolean, nullable=False, default=False)
-    enabled = Column(Boolean, nullable=False, default=False)
+    entity_id = Column(String, nullable=False, unique=True, index=True)  # e.g. "calendar.family"
+    friendly_name = Column(String, nullable=False, default="")  # cached from HA for display
+    color = Column(String, nullable=True)  # user-chosen colour shown on event chips
+    enabled = Column(Boolean, nullable=False, default=True)
     member_id = Column(Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True)
 
 
@@ -138,17 +127,3 @@ class TodoItem(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
-class CalendarEvent(Base):
-    __tablename__ = "calendar_events"
-
-    id = Column(Integer, primary_key=True, index=True)
-    account_id = Column(Integer, ForeignKey("google_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    google_event_id = Column(String, nullable=False, index=True)
-    calendar_id = Column(String, nullable=False)
-    color = Column(String, nullable=True)
-    member_id = Column(Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True)
-    summary = Column(String, nullable=False, default="")
-    location = Column(String, nullable=True)
-    start_at = Column(DateTime, nullable=False, index=True)
-    end_at = Column(DateTime, nullable=False)
-    all_day = Column(Boolean, nullable=False, default=False)

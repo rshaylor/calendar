@@ -1,5 +1,4 @@
 import os
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -9,21 +8,14 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
-from . import google_calendar
 from .db import Base, engine, ensure_schema
 from .routers import calendar, chores, family, lists, members, rewards, weather
 
-Base.metadata.create_all(bind=engine)
 ensure_schema()
+Base.metadata.create_all(bind=engine)
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    google_calendar.start_background_sync()
-    yield
-
-
-app = FastAPI(title="Family Hub API", lifespan=lifespan)
+app = FastAPI(title="Family Hub API")
 
 app.add_middleware(
     CORSMiddleware,

@@ -15,7 +15,7 @@ export default function CalendarSettings({ members }: Props) {
     try {
       const s = await api.calendarStatus();
       setStatus(s);
-      if (s.accounts.length > 0) {
+      if (s.configured) {
         setSubs(await api.listSubscriptions());
       } else {
         setSubs([]);
@@ -30,21 +30,6 @@ export default function CalendarSettings({ members }: Props) {
     refresh();
   }, []);
 
-  async function connect() {
-    try {
-      const { url } = await api.calendarAuthUrl();
-      window.location.href = url;
-    } catch (e) {
-      setError(String(e));
-    }
-  }
-
-  async function disconnect(id: number) {
-    if (!confirm("Disconnect this Google account?")) return;
-    await api.disconnectGoogle(id);
-    refresh();
-  }
-
   async function toggleEnabled(sub: CalendarSubscription) {
     await api.updateSubscription(sub.id, { enabled: !sub.enabled });
     refresh();
@@ -52,6 +37,11 @@ export default function CalendarSettings({ members }: Props) {
 
   async function setOwner(sub: CalendarSubscription, memberId: number | null) {
     await api.updateSubscription(sub.id, { member_id: memberId });
+    refresh();
+  }
+
+  async function setColor(sub: CalendarSubscription, color: string | null) {
+    await api.updateSubscription(sub.id, { color });
     refresh();
   }
 
@@ -71,61 +61,45 @@ export default function CalendarSettings({ members }: Props) {
   if (!status.configured) {
     return (
       <div className="rounded-3xl bg-surface border border-line p-6">
-        <p className="text-ink-2 mb-3">
-          Add your Google OAuth client to{" "}
-          <code className="px-1 py-0.5 rounded bg-surface-2">apps/api/.env</code>:
+        <p className="text-ink-2 mb-2">
+          Calendar isn't reachable from this add-on.
         </p>
-        <pre className="rounded-xl bg-surface-2 p-4 text-sm overflow-auto">
-{`GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REDIRECT_URI=${status.redirect_uri}`}
-        </pre>
+        {status.reason && (
+          <p className="text-sm text-muted mb-3">{status.reason}</p>
+        )}
+        <p className="text-sm text-ink-2">
+          Family Hub reads calendars from Home Assistant. Make sure HA has at
+          least one calendar integration set up (Settings → Devices & Services
+          → Add Integration → Google Calendar / Local Calendar / CalDAV / …),
+          then come back here.
+        </p>
       </div>
     );
   }
 
-  if (status.accounts.length === 0) {
+  if (subs.length === 0) {
     return (
       <div className="rounded-3xl bg-surface border border-line p-6 text-center">
-        <p className="text-ink-2 mb-4">No Google account connected.</p>
+        <p className="text-ink-2 mb-3">
+          No calendars found in Home Assistant yet.
+        </p>
+        <p className="text-sm text-muted mb-4">
+          Add one in HA (Settings → Devices & Services → Add Integration), then
+          tap below.
+        </p>
         <button
-          onClick={connect}
-          className="px-5 py-3 rounded-2xl bg-primary text-white font-medium shadow-sm"
+          onClick={refreshCalendarList}
+          disabled={busy}
+          className="px-5 py-3 rounded-2xl bg-primary text-white font-medium shadow-sm disabled:opacity-50"
         >
-          Connect Google Calendar
+          {busy ? "Looking…" : "Re-check Home Assistant"}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs text-muted uppercase tracking-wide mb-2">Accounts</div>
-        <div className="rounded-3xl bg-surface border border-line divide-y divide-line">
-          {status.accounts.map((a) => (
-            <div key={a.id} className="px-5 py-3 flex items-center gap-3">
-              <span>📅</span>
-              <span className="font-medium">{a.email}</span>
-              <span className="text-xs text-muted ml-2">
-                {a.last_synced_at
-                  ? `synced ${new Date(a.last_synced_at).toLocaleTimeString()}`
-                  : "not synced"}
-              </span>
-              <button
-                onClick={() => disconnect(a.id)}
-                className="text-sm text-muted hover:text-danger ml-auto"
-              >
-                disconnect
-              </button>
-            </div>
-          ))}
-        </div>
-        <button onClick={connect} className="mt-2 text-sm text-primary hover:underline">
-          + connect another account
-        </button>
-      </div>
-
+    <div className="space-y-4">
       <div>
         <div className="flex items-center mb-2">
           <span className="text-xs text-muted uppercase tracking-wide">Calendars</span>
@@ -134,28 +108,33 @@ GOOGLE_REDIRECT_URI=${status.redirect_uri}`}
             disabled={busy}
             className="ml-auto text-sm text-ink-2 hover:text-ink"
           >
-            refresh list
+            refresh from HA
           </button>
         </div>
         <p className="text-xs text-muted mb-3">
-          Tick what you want shown, and assign each calendar to a family member so events get their colour.
+          Tick the calendars you want shown, pick a colour, and (optionally)
+          assign each one to a family member so events take that member's
+          colour automatically.
         </p>
         <div className="rounded-3xl bg-surface border border-line divide-y divide-line">
           {subs.map((s) => (
-            <div key={s.id} className="px-5 py-3 flex items-center gap-3">
+            <div key={s.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
               <input
                 type="checkbox"
                 checked={s.enabled}
                 onChange={() => toggleEnabled(s)}
                 className="w-5 h-5"
               />
-              <span
-                className="w-3.5 h-3.5 rounded-sm shrink-0"
-                style={{ background: s.background_color ?? "#9ca3af" }}
+              <input
+                type="color"
+                value={s.color ?? "#9ca3af"}
+                onChange={(e) => setColor(s, e.target.value)}
+                className="w-8 h-8 rounded border border-line cursor-pointer"
+                title="Calendar colour"
               />
               <span className="font-medium flex-1 truncate">
-                {s.summary || s.google_calendar_id}
-                {s.is_primary && <span className="ml-2 text-xs text-muted">primary</span>}
+                {s.friendly_name || s.entity_id}
+                <span className="ml-2 text-xs text-muted">{s.entity_id}</span>
               </span>
               <select
                 value={s.member_id ?? ""}
@@ -175,6 +154,13 @@ GOOGLE_REDIRECT_URI=${status.redirect_uri}`}
           ))}
         </div>
       </div>
+
+      <p className="text-xs text-muted">
+        Calendars are managed in Home Assistant. To connect a new Google
+        account or change which Google account is used, go to HA → Settings →
+        Devices & Services. Family Hub will pick up changes the next time you
+        tap "refresh from HA".
+      </p>
     </div>
   );
 }

@@ -13,7 +13,7 @@ profile family_hub flags=(attach_disconnected,mediate_deleted) {
   capability sys_chroot,
   capability kill,
 
-  # Networking (HTTP server + outbound to Google APIs / Open-Meteo)
+  # Networking (HTTP server + outbound to HA Supervisor + Open-Meteo)
   network,
 
   # Signals between processes

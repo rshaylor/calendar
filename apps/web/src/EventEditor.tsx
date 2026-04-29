@@ -45,13 +45,12 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
   const initialSubId = useMemo(() => {
     if (event) {
       return (
-        subs.find((s) => s.google_calendar_id === event.calendar_id)?.id ??
-        writableSubs.find((s) => s.is_primary)?.id ??
+        subs.find((s) => s.entity_id === event.entity_id)?.id ??
         writableSubs[0]?.id ??
         0
       );
     }
-    return writableSubs.find((s) => s.is_primary)?.id ?? writableSubs[0]?.id ?? 0;
+    return writableSubs[0]?.id ?? 0;
   }, [event, subs, writableSubs]);
 
   const initial = useMemo(() => {
@@ -129,7 +128,7 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
     setBusy(true);
     setError(null);
     try {
-      // Google all-day events use exclusive end. UI shows inclusive end,
+      // iCalendar all-day events use exclusive end. UI shows inclusive end,
       // so add one day on submit.
       const startIso = allDay ? start : toIsoFromLocalDateTime(start);
       const endIso = allDay
@@ -137,14 +136,13 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
         : toIsoFromLocalDateTime(end);
       if (editing && event) {
         const patch: EventPatchBody = {
-          subscription_id: subId,
           summary: summary.trim(),
           location: location.trim(),
           all_day: allDay,
           start: startIso,
           end: endIso,
         };
-        await api.updateEvent(event.id, patch);
+        await api.updateEvent(event.uid, event.entity_id, patch);
       } else {
         const body: EventWriteBody = {
           subscription_id: subId,
@@ -166,11 +164,11 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
 
   async function remove() {
     if (!event) return;
-    if (!confirm("Delete this event from Google Calendar?")) return;
+    if (!confirm("Delete this event?")) return;
     setBusy(true);
     setError(null);
     try {
-      await api.deleteEvent(event.id);
+      await api.deleteEvent(event.uid, event.entity_id);
       onSaved();
     } catch (e: any) {
       setError(String(e?.message ?? e));
@@ -263,11 +261,13 @@ export default function EventEditor({ event, subs, defaultStart, onClose, onSave
             <select
               value={subId}
               onChange={(e) => setSubId(parseInt(e.target.value, 10))}
-              className="px-3 py-2 rounded-xl bg-surface-2 border border-line"
+              disabled={editing}
+              className="px-3 py-2 rounded-xl bg-surface-2 border border-line disabled:opacity-60"
+              title={editing ? "Move events between calendars in your calendar app." : undefined}
             >
               {writableSubs.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.summary || s.google_calendar_id}
+                  {s.friendly_name || s.entity_id}
                 </option>
               ))}
             </select>

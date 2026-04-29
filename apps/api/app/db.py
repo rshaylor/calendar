@@ -21,13 +21,36 @@ def get_db():
 
 
 def ensure_schema() -> None:
-    """Lightweight additive migrations for SQLite (create_all only handles new tables)."""
-    inspector = inspect(engine)
+    """Lightweight migrations for SQLite.
 
+    Runs *before* `Base.metadata.create_all`, so we can drop legacy tables
+    that have a different shape than the current models, then let create_all
+    rebuild them.
+    """
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+
+    # 0.3.0: switched calendar from direct-Google to HA-backed. Drop the legacy
+    # google_accounts / calendar_events tables; reshape calendar_subscriptions
+    # if it still has the old (account_id, google_calendar_id) schema.
+    legacy_drops: list[str] = []
+    if "google_accounts" in tables:
+        legacy_drops.append("google_accounts")
+    if "calendar_events" in tables:
+        legacy_drops.append("calendar_events")
+    if "calendar_subscriptions" in tables:
+        cols = {c["name"] for c in inspector.get_columns("calendar_subscriptions")}
+        if "account_id" in cols or "google_calendar_id" in cols:
+            legacy_drops.append("calendar_subscriptions")
+    if legacy_drops:
+        with engine.begin() as conn:
+            for table in legacy_drops:
+                conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
+
+    # Additive column migrations on still-current tables. Run after drops so
+    # we don't try to ALTER tables we're about to recreate.
+    inspector = inspect(engine)
     additions = [
-        ("calendar_events", "color", "VARCHAR"),
-        ("calendar_events", "member_id", "INTEGER"),
-        ("calendar_subscriptions", "member_id", "INTEGER"),
         ("chores", "weekdays", "TEXT"),
         ("chores", "time_of_day", "VARCHAR"),
         ("family_members", "birth_date", "DATE"),

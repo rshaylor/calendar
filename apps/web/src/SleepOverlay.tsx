@@ -159,7 +159,7 @@ export default function SleepOverlay({
             {tomorrowEvents.slice(0, 4).map((ev) => {
               const m = ev.member_id ? memberById.get(ev.member_id) : null;
               return (
-                <span key={ev.id} className="inline-flex items-center gap-1.5">
+                <span key={ev.uid} className="inline-flex items-center gap-1.5">
                   <span>{m?.avatar_emoji ?? "📅"}</span>
                   <span>
                     {ev.all_day

@@ -70,23 +70,15 @@ export type HistoryEntry = {
   at: string;
 };
 
-export type GoogleAccount = {
-  id: number;
-  email: string;
-  connected_at: string;
-  last_synced_at: string | null;
-};
-
 export type CalendarStatus = {
   configured: boolean;
-  redirect_uri: string;
-  accounts: GoogleAccount[];
+  reason?: string;
+  calendar_count?: number;
 };
 
 export type CalendarEvent = {
-  id: number;
-  google_event_id: string;
-  calendar_id: string;
+  uid: string;
+  entity_id: string;
   summary: string;
   location: string | null;
   color: string | null;
@@ -99,11 +91,9 @@ export type CalendarEvent = {
 
 export type CalendarSubscription = {
   id: number;
-  account_id: number;
-  google_calendar_id: string;
-  summary: string;
-  background_color: string | null;
-  is_primary: boolean;
+  entity_id: string;
+  friendly_name: string;
+  color: string | null;
   enabled: boolean;
   member_id: number | null;
 };
@@ -184,10 +174,6 @@ export const api = {
     request<HistoryEntry[]>(`/balances/${memberId}/history?limit=${limit}`),
 
   calendarStatus: () => request<CalendarStatus>("/calendar/status"),
-  calendarAuthUrl: () => {
-    const returnTo = encodeURIComponent(window.location.href);
-    return request<{ url: string }>(`/calendar/auth-url?return_to=${returnTo}`);
-  },
   calendarEvents: (params: { days?: number; from?: string; to?: string } = {}) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from_date", params.from);
@@ -196,13 +182,10 @@ export const api = {
     const qs = q.toString();
     return request<CalendarEvent[]>(`/calendar/events${qs ? "?" + qs : ""}`);
   },
-  disconnectGoogle: (id: number) =>
-    request<void>(`/calendar/accounts/${id}`, { method: "DELETE" }),
-  syncCalendar: () => request<{ status: string }>("/calendar/sync", { method: "POST" }),
   listSubscriptions: () => request<CalendarSubscription[]>("/calendar/subscriptions"),
   updateSubscription: (
     id: number,
-    patch: { enabled?: boolean; member_id?: number | null },
+    patch: { enabled?: boolean; member_id?: number | null; color?: string | null },
   ) =>
     request<CalendarSubscription>(`/calendar/subscriptions/${id}`, {
       method: "PATCH",
@@ -216,13 +199,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  updateEvent: (id: number, body: EventPatchBody) =>
-    request<CalendarEvent>(`/calendar/events/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    }),
-  deleteEvent: (id: number) =>
-    request<void>(`/calendar/events/${id}`, { method: "DELETE" }),
+  updateEvent: (uid: string, entity_id: string, body: EventPatchBody) =>
+    request<CalendarEvent>(
+      `/calendar/events/${encodeURIComponent(uid)}?entity_id=${encodeURIComponent(entity_id)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteEvent: (uid: string, entity_id: string) =>
+    request<void>(
+      `/calendar/events/${encodeURIComponent(uid)}?entity_id=${encodeURIComponent(entity_id)}`,
+      { method: "DELETE" },
+    ),
 
   weather: () => request<Weather>("/weather"),
   weatherLocation: () =>
