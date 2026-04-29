@@ -77,7 +77,7 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
     try {
       const s = await api.calendarStatus();
       setStatus(s);
-      if (s.accounts.length > 0) {
+      if (s.configured) {
         const [evs, ss] = await Promise.all([
           api.calendarEvents({
             from: weekStart.toISOString(),
@@ -99,17 +99,13 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
 
   useEffect(() => {
     refresh();
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "1") {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart.getTime()]);
 
   async function syncNow() {
     setBusy(true);
     try {
-      await api.syncCalendar();
+      await api.refreshSubscriptions();
       await refresh();
     } finally {
       setBusy(false);
@@ -127,19 +123,18 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
 
   if (!status) return <p className="text-muted">Loading…</p>;
 
-  if (!status.configured || status.accounts.length === 0) {
+  if (!status.configured || (status.calendar_count ?? 0) === 0) {
     return (
       <div className="rounded-3xl bg-surface border border-line p-8 shadow-sm text-center">
         <div className="w-14 h-14 rounded-2xl bg-bg-2 mx-auto mb-3 flex items-center justify-center">
           <Icon name="calendar" size={28} color="var(--color-ink-2)" />
         </div>
         <h3 className="font-display text-2xl font-medium mb-2">
-          {!status.configured ? "Google Calendar not configured" : "No calendar connected"}
+          {!status.configured ? "Calendar isn't reachable" : "No calendars in Home Assistant"}
         </h3>
         <p className="text-ink-2 mb-5">
-          {!status.configured
-            ? "Set GOOGLE_CLIENT_ID and SECRET in apps/api/.env, then connect."
-            : "Connect a Google account to start showing events."}
+          {status.reason ??
+            "Add a calendar integration in Home Assistant (Settings → Devices & Services), then come back."}
         </p>
         <button
           onClick={onGoToSettings}
@@ -224,12 +219,8 @@ export default function CalendarTab({ members, onGoToSettings }: Props) {
             onClick={syncNow}
             disabled={busy}
             className="w-9 h-9 rounded-full bg-surface border border-line hover:bg-bg-2 inline-flex items-center justify-center disabled:opacity-50"
-            aria-label="Sync now"
-            title={
-              status.accounts[0]?.last_synced_at
-                ? `Synced ${new Date(status.accounts[0].last_synced_at).toLocaleTimeString()}`
-                : "Sync now"
-            }
+            aria-label="Refresh calendars from Home Assistant"
+            title="Refresh calendars from Home Assistant"
           >
             <Icon name="refresh" size={16} color="var(--color-ink-2)" />
           </button>

@@ -5,7 +5,7 @@ Shared calendar, chores with star rewards, and family lists — on a kitchen tou
 ## What it does
 
 - **Today** — a glanceable home tab: kid progress rings, what's up next, and today's events as a clean timeline.
-- **Calendar** — Google Calendar sync with per-member colours. Connect one or more Google accounts, assign each calendar to a family member, then pick a week and see everyone's plans side by side. Add / edit / delete / move events directly from the touchscreen or a phone.
+- **Calendar** — every calendar Home Assistant knows about, with per-member colours. Tick which ones to show, assign each to a family member, and pick a week to see everyone's plans side by side. Add / edit / delete events directly from the touchscreen or a phone.
 - **Chores** — per-kid lanes with morning / afternoon / evening / anytime sections. Tap to mark done. Stars accumulate.
 - **Rewards** — kid-level star bank, parent-defined rewards (movie night, ice cream, …), redeem with one tap, full history.
 - **Lists** — multiple lists (grocery / packing / to-do / …) with quick add, swipe-to-clear-done.
@@ -25,36 +25,39 @@ All options are set on the **Configuration** tab of the add-on.
 
 | Option | What it does |
 |---|---|
-| `google_client_id` | OAuth 2.0 Client ID from your Google Cloud project. |
-| `google_client_secret` | Matching client secret (treated as a password). |
-| `google_redirect_uri` | Must match a redirect URI in your Google OAuth client. Default `http://homeassistant.local:8000/api/calendar/callback` works for most installs — replace `homeassistant.local` if your HA hostname differs. |
 | `location_lat` / `location_lon` | Decimal coordinates for the weather pill. Leave blank to hide weather. |
-| `calendar_sync_seconds` | How often the server polls Google Calendar in the background. Default `1800` (30 min). |
 
-### One-time Google Cloud setup
+That's it. Calendars are managed in Home Assistant itself — see below.
 
-1. Create a Google Cloud project (or reuse one).
-2. Enable the **Google Calendar API**.
-3. Create an **OAuth 2.0 Client ID** of type **Web application**.
-4. Add to **Authorized redirect URIs**: `http://<your-ha-hostname>:8000/api/calendar/callback` — match this exactly to the `google_redirect_uri` option.
-5. Add yourself (and any family member who'll need to connect their calendar) as **Test users** on the OAuth consent screen — the app stays in "Testing" mode, which is fine for a personal household app.
-6. Paste the Client ID / Client Secret into this add-on's Configuration tab and save.
+### Calendar setup
 
-### Connecting a Google Calendar
+Family Hub doesn't talk to Google directly. It reads from any calendar integration that Home Assistant supports.
 
-1. Open Family Hub (left sidebar in HA, or directly via Ingress).
-2. **Settings → Calendar → Connect Google Calendar**.
-3. Sign in with the Google account whose calendar you want to use, accept the scopes.
-4. You'll land back in Family Hub with the calendar's subscriptions listed.
-5. Tick which calendars to show, and (optionally) assign each one to a family member so events get that member's colour.
+**Easy path (with Home Assistant Cloud / Nabu Casa):**
+1. In HA: **Settings → Devices & Services → Add Integration → Google Calendar**.
+2. Click "Sign in with Google" — HA Cloud handles the OAuth handshake. No Google Cloud project, no client ID, no redirect URI.
+3. Pick which Google calendars to expose to HA.
+4. Open Family Hub → **Settings → Calendar** → tick the calendars you want shown and assign owners.
 
-You can connect multiple Google accounts — each will appear in the list and can be configured independently.
+**Without Nabu Casa:** the same flow works, but HA walks you through creating a Google Cloud OAuth client. The HA documentation for the Google Calendar integration covers this end-to-end and is much smoother than rolling your own.
+
+**Other calendars:** Local Calendar, CalDAV (Fastmail, Nextcloud, etc.), Office 365 / Microsoft 365, and iCloud are all supported by HA integrations. Add them in HA the same way and they appear in Family Hub.
+
+## Connecting a calendar to a family member
+
+1. Open Family Hub → **Settings → Calendar**.
+2. For each calendar you want shown, tick the checkbox.
+3. Pick a colour with the colour swatch (defaults to a neutral grey).
+4. Optional: pick a family member as the calendar's owner — events on that calendar then show that member's avatar and inherit their colour.
+
+Hit **refresh from HA** if you've just added a new calendar in HA and don't see it in the list yet.
 
 ## Data and privacy
 
-- Everything is stored locally in a SQLite database at `/data/app.db` inside the add-on's persistent volume. It survives restarts, updates, and reboots.
-- The only data sent off the Yellow is to Google (read-write Calendar) and Open-Meteo (weather, anonymous lat/lon). Nothing is sent to any cloud belonging to this project.
-- The UI is auth-gated by HA Ingress — only people who can sign in to your Home Assistant can use the app's UI. The OAuth callback port (8000) is reachable directly without HA auth, but it only handles Google's redirect.
+- Everything Family Hub stores (members, chores, rewards, lists, calendar visibility/colour preferences) lives in a SQLite database at `/data/app.db` inside the add-on's persistent volume. It survives restarts, updates, and reboots.
+- Family Hub doesn't talk to Google, Microsoft, Apple, or any calendar provider directly. All calendar data flows through HA's API on the Yellow.
+- The UI is auth-gated by HA Ingress — only people who can sign in to your Home Assistant can use the app.
+- Weather goes to Open-Meteo with the lat/lon you set (anonymous, no API key, no account).
 
 ## Updating
 
@@ -66,7 +69,9 @@ git pull
 
 ## Troubleshooting
 
-- **"Insufficient Permission" when saving an event** — your Google OAuth token was created with a read-only scope. Disconnect the Google account in Settings → Calendar, then reconnect — Google will prompt for the new write scope.
-- **Birthdays don't appear** — set a date of birth on the family member in **Settings → Family**. Birthdays are synthetic events — they aren't pushed to Google.
+- **"Calendar isn't reachable"** — confirm `homeassistant_api: true` is set in `config.yaml` (it is by default; this would only be an issue if you've forked and changed it). Restart the add-on so the Supervisor injects a fresh token.
+- **No calendars listed** — add at least one calendar integration in HA (Settings → Devices & Services → Add Integration). Then in Family Hub Settings → Calendar, hit **refresh from HA**.
+- **Editing or deleting an event fails** — not every HA calendar integration supports update/delete. Local Calendar and recent Google Calendar versions do; CalDAV varies. If your integration is read-only, edits have to be done in the source calendar app.
+- **Birthdays don't appear** — set a date of birth on the family member in **Settings → Family**. Birthdays are synthetic events — they aren't pushed anywhere.
 - **Weather pill missing** — set `location_lat` and `location_lon` in the add-on Configuration tab.
 - **Build fails on apk** — make sure your HA install is on the matching architecture for the base image. The add-on supports `aarch64` and `amd64`.

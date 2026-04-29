@@ -266,7 +266,7 @@ export default function TodayTab({
                 const color = m?.color ?? ev.color ?? "#86b9f7";
                 return (
                   <li
-                    key={ev.id}
+                    key={ev.uid}
                     className="rounded-xl px-3 py-2 flex items-center gap-2"
                     style={{ background: tint(color, 0.28) }}
                   >
@@ -295,7 +295,7 @@ export default function TodayTab({
               const color = m?.color ?? ev.color ?? "#86b9f7";
               return (
                 <li
-                  key={ev.id}
+                  key={ev.uid}
                   className="grid grid-cols-[60px_14px_1fr] gap-3 items-stretch py-2"
                 >
                   <div className="text-right text-sm pr-1">

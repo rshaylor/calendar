@@ -82,7 +82,7 @@ export default function MobileAgenda({ events, members, onEventClick }: Props) {
                 const m = ev.member_id ? memberById.get(ev.member_id) : null;
                 const color = m?.color ?? ev.color ?? "#86b9f7";
                 return (
-                  <li key={ev.id}>
+                  <li key={ev.uid}>
                     <button
                       onClick={() => onEventClick?.(ev)}
                       className="w-full rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
@@ -105,7 +105,7 @@ export default function MobileAgenda({ events, members, onEventClick }: Props) {
                 const m = ev.member_id ? memberById.get(ev.member_id) : null;
                 const color = m?.color ?? ev.color ?? "#86b9f7";
                 return (
-                  <li key={ev.id}>
+                  <li key={ev.uid}>
                     <button
                       onClick={() => onEventClick?.(ev)}
                       className="w-full rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
