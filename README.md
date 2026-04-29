@@ -6,21 +6,21 @@ Calendars come from Home Assistant — connect Google Calendar, Office 365, iClo
 
 ## Installing
 
-The repo is a single-add-on Home Assistant repository.
+Family Hub ships as a Home Assistant add-on through this GitHub repository.
 
-1. On your HA host (Samba / SSH / VS Code add-on), clone or copy this repo into `/addons/family_hub/`:
-   ```bash
-   git clone https://github.com/rshaylor/calendar /addons/family_hub
+1. In HA, go to **Settings → Add-ons → Add-on Store**, click the ⋮ menu in the top right, choose **Repositories**, and paste:
    ```
-2. In Home Assistant: **Settings → Add-ons → ⋮ → Check for updates** (or restart the Supervisor). Family Hub appears under **Local add-ons**.
-3. Open the add-on, set your latitude/longitude on the **Configuration** tab (optional — for the weather pill).
-4. **Start** the add-on. The UI shows up under HA's sidebar via Ingress (auth-protected by HA).
+   https://github.com/rshaylor/calendar
+   ```
+2. The store now shows a **Family Hub** section. Click **Family Hub → Install**.
+3. Open the **Configuration** tab, optionally set your latitude / longitude (for the weather pill), and **Save**.
+4. **Start** the add-on. Open the UI from HA's sidebar (it's served via Ingress and auth-protected by HA).
 5. In HA, **Settings → Devices & Services → Add Integration** and add at least one calendar (Google Calendar, Local Calendar, Office 365, CalDAV, …). With Nabu Casa, Google Calendar takes ~30 seconds and no Google Cloud setup.
-6. Open Family Hub → **Settings → Calendar** → tick the calendars you want shown, optionally assign each one to a family member.
+6. Back in Family Hub: **Settings → Calendar** → tick the calendars you want shown, optionally assign each one to a family member.
 
-The SQLite database is persisted in HA's `/data` mount and survives restarts and updates.
+The SQLite database is persisted in HA's `/data` mount and survives restarts and updates. To upgrade, hit **Update** in the add-on store when a new version is published.
 
-See [DOCS.md](DOCS.md) for full configuration and troubleshooting.
+See [family_hub/DOCS.md](family_hub/DOCS.md) for full configuration and troubleshooting.
 
 ## Local development
 
@@ -36,9 +36,15 @@ The dev server can't read calendars (calendar features need a real HA instance w
 ## Repo layout
 
 ```
-apps/api/              # FastAPI backend (chores, rewards, calendar via HA, lists, settings)
-apps/web/              # React + Vite + Tailwind frontend
-config.yaml            # HA add-on metadata
-Dockerfile             # HA add-on build
-run.sh                 # HA add-on entrypoint (reads bashio options)
+repository.yaml         # marks this repo as an HA add-on store
+family_hub/             # the add-on itself
+  config.yaml           # add-on metadata
+  Dockerfile            # add-on build (multi-arch: aarch64, amd64)
+  run.sh                # add-on entrypoint
+  apparmor.txt          # add-on AppArmor profile (currently disabled)
+  DOCS.md               # shown in the add-on's Documentation tab
+  CHANGELOG.md          # shown in the add-on's Changelog tab
+  apps/api/             # FastAPI backend (chores, rewards, calendar via HA, lists)
+  apps/web/             # React + Vite + Tailwind frontend
+package.json            # repo-root dev convenience scripts
 ```

@@ -12,8 +12,8 @@ dist/
 *.tsbuildinfo
 
 # Vite produces these from vite.config.ts during typecheck
-apps/web/vite.config.d.ts
-apps/web/vite.config.js
+family_hub/apps/web/vite.config.d.ts
+family_hub/apps/web/vite.config.js
 
 # SQLite (mounted via docker volume in dev)
 *.db
@@ -31,4 +31,4 @@ Thumbs.db
 # Env
 .env
 .env.local
-apps/api/.env
+family_hub/apps/api/.env
